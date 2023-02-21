@@ -1,121 +1,128 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
-#include "includes.h"
+#include <vector>
+#include <optional>
 
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphicsFamily;
-    std::optional<uint32_t> presentFamily;
+namespace Plover {
+    struct QueueFamilyIndices {
+        std::optional<uint32_t> graphicsFamily;
+        std::optional<uint32_t> presentFamily;
 
-    bool isComplete() {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
-};
-
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> presentModes;
-};
-
-class Renderer {
-public:
-    void run();
-private:
-    // Vulkan Instance
-    VkInstance instance;
-
-    // Graphics Card Device
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-
-    // Logical Device
-    VkDevice device;
-
-    // Queues
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-
-    // Surface
-    VkSurfaceKHR surface;
-
-    // Swap Chain
-    VkSwapchainKHR swapChain;
-    std::vector<VkImage> swapChainImages;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
-
-    // Image views
-    std::vector<VkImageView> swapChainImageViews;
-
-    //  Debug Messenger
-    VkDebugUtilsMessengerEXT debugMessenger;
-
-    // Validation Layers
-    const std::vector<const char*> validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
+        bool isComplete() {
+            return graphicsFamily.has_value() && presentFamily.has_value();
+        }
     };
 
-    // Required Extensions
-    const std::vector<const char*> deviceExtensions = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    struct SwapChainSupportDetails {
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
     };
 
-    #ifdef NDEBUG
+    class Renderer {
+    public:
+        void run();
+    private:
+        // Vulkan Instance
+        VkInstance instance;
+
+        // Graphics Card Device
+        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+        // Logical Device
+        VkDevice device;
+
+        // Queues
+        VkQueue graphicsQueue;
+        VkQueue presentQueue;
+
+        // Surface
+        VkSurfaceKHR surface;
+
+        // Swap Chain
+        VkSwapchainKHR swapChain;
+        std::vector<VkImage> swapChainImages;
+        VkFormat swapChainImageFormat;
+        VkExtent2D swapChainExtent;
+
+        // Image views
+        std::vector<VkImageView> swapChainImageViews;
+
+        //  Debug Messenger
+        VkDebugUtilsMessengerEXT debugMessenger;
+
+        // Validation Layers
+        const std::vector<const char*> validationLayers = {
+                "VK_LAYER_KHRONOS_validation"
+        };
+
+        // Required Extensions
+        const std::vector<const char*> deviceExtensions = {
+                VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+
+#ifdef NDEBUG
         const bool enableValidationLayers = false;
-    #else
+#else
         const bool enableValidationLayers = true;
-    #endif
+#endif
 
-    // Window
-    GLFWwindow* window;
-    const uint32_t WIDTH = 800;
-    const uint32_t HEIGHT = 600;
+        // Window
+        GLFWwindow* window;
+        const uint32_t WIDTH = 800;
+        const uint32_t HEIGHT = 600;
 
-    void initWindow();
+        void initWindow();
 
-    std::vector<const char*> getRequiredExtensions();
+        std::vector<const char*> getRequiredExtensions();
 
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-            VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-            VkDebugUtilsMessageTypeFlagsEXT messageType,
-            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* pUserData
-            );
+        static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+                VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                VkDebugUtilsMessageTypeFlagsEXT messageType,
+                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                void* pUserData
+        );
 
-    void createInstance();
+        void createInstance();
 
-    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+        void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
-    void setupDebugMessenger();
+        void setupDebugMessenger();
 
-    bool checkValidationLayerSupport();
+        bool checkValidationLayerSupport();
 
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice currentDevice);
+        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice currentDevice);
 
-    bool checkDeviceExtensionSupport(VkPhysicalDevice currentDevice);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice currentDevice);
 
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
-    uint32_t rateDeviceSuitability(VkPhysicalDevice currentDevice);
+        uint32_t rateDeviceSuitability(VkPhysicalDevice currentDevice);
 
-    void pickPhysicalDevice();
+        void pickPhysicalDevice();
 
-    void createLogicalDevice();
+        void createLogicalDevice();
 
-    void createSurface();
+        void createSurface();
 
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 
-    VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
-    void createSwapChain();
+        void createSwapChain();
 
-    void createImageViews();
+        void createImageViews();
 
-    void initVulkan();
+        VkShaderModule createShaderModule(const std::vector<char>& code);
 
-    void mainLoop();
+        void createGraphicsPipeline();
 
-    void cleanup();
-};
+        void initVulkan();
+
+        void mainLoop();
+
+        void cleanup();
+    };
+}

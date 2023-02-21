@@ -10,26 +10,29 @@ set(ENV{VULKAN_SDK} $ENV{VULKAN_SDK_PATH})
 find_package(Vulkan REQUIRED)
 message(STATUS ${PROJECT_NAME})
 
-add_library(${PROJECT_NAME} "src/Renderer.cpp")
+add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h")
+
+add_subdirectory(libraries/glfw)
+add_subdirectory(libraries/glm)
 
 target_include_directories(${PROJECT_NAME}
-	PRIVATE include/
-	PRIVATE src/
-	PRIVATE ${Vulkan_INCLUDE_DIRS}
-	PRIVATE libraries/glfw/include
-	PRIVATE libraries/glm/include
+	PUBLIC include/
+	PUBLIC ${Vulkan_INCLUDE_DIRS}
+	PUBLIC libraries/glfw/include
+	PUBLIC libraries/glm/include
 )
 
 target_link_directories(${PROJECT_NAME}
-	PRIVATE libraries/glfw/src
+	PUBLIC libraries/glfw/src
 )
 
 target_link_libraries(${PROJECT_NAME}
-	PRIVATE ${Vulkan_LIBRARIES}
-	PRIVATE glfw
-	PRIVATE glm
+	PUBLIC ${Vulkan_LIBRARIES}
+	PUBLIC glfw
+	PUBLIC glm
 )
 
 install(TARGETS ${PROJECT_NAME}
+		EXPORT ${PROJECT_NAME}Targets
 		INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 		LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
