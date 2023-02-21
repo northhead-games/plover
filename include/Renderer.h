@@ -23,20 +23,15 @@ namespace Plover {
     public:
         void run();
     private:
-        // Vulkan Instance
         VkInstance instance;
 
-        // Graphics Card Device
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-        // Logical Device
         VkDevice device;
 
-        // Queues
         VkQueue graphicsQueue;
         VkQueue presentQueue;
 
-        // Surface
         VkSurfaceKHR surface;
 
         // Swap Chain
@@ -45,18 +40,30 @@ namespace Plover {
         VkFormat swapChainImageFormat;
         VkExtent2D swapChainExtent;
 
-        // Image views
+        VkRenderPass renderPass;
         std::vector<VkImageView> swapChainImageViews;
 
-        //  Debug Messenger
+        VkPipelineLayout pipelineLayout;
+
+        VkPipeline graphicsPipeline;
+
+        std::vector<VkFramebuffer> swapChainFramebuffers;
+
+        VkCommandPool commandPool;
+
+        VkCommandBuffer commandBuffer;
+
+        VkSemaphore imageAvailableSemaphore;
+        VkSemaphore renderFinishedSemaphore;
+        VkFence inFlightFence;
+
         VkDebugUtilsMessengerEXT debugMessenger;
 
-        // Validation Layers
+
         const std::vector<const char*> validationLayers = {
                 "VK_LAYER_KHRONOS_validation"
         };
 
-        // Required Extensions
         const std::vector<const char*> deviceExtensions = {
                 VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
@@ -115,11 +122,25 @@ namespace Plover {
 
         void createImageViews();
 
+        void createRenderPass();
+
         VkShaderModule createShaderModule(const std::vector<char>& code);
 
         void createGraphicsPipeline();
 
+        void createFramebuffers();
+
+        void createCommandPool();
+
+        void createCommandBuffer();
+
+        void createSyncObjects();
+
         void initVulkan();
+
+        void recordCommandBuffer(VkCommandBuffer currentCommandBuffer, uint32_t imageIndex);
+
+        void drawFrame();
 
         void mainLoop();
 
