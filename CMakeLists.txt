@@ -1,14 +1,16 @@
 cmake_minimum_required(VERSION 3.8)
 
+set(CMAKE_CXX_STANDARD 17)
+
 project("plover")
+
+include(GNUInstallDirs)
 
 set(ENV{VULKAN_SDK} $ENV{VULKAN_SDK_PATH})
 find_package(Vulkan REQUIRED)
+message(STATUS ${PROJECT_NAME})
 
 add_library(${PROJECT_NAME} "src/Renderer.cpp")
-
-find_package(Vulkan REQUIRED)
-message(STATUS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME}
 	PRIVATE include/
@@ -27,3 +29,7 @@ target_link_libraries(${PROJECT_NAME}
 	PRIVATE glfw
 	PRIVATE glm
 )
+
+install(TARGETS ${PROJECT_NAME}
+		INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+		LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
