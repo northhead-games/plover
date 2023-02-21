@@ -4,146 +4,146 @@
 #include <optional>
 
 namespace Plover {
-    struct QueueFamilyIndices {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
+	struct QueueFamilyIndices {
+		std::optional<uint32_t> graphicsFamily;
+		std::optional<uint32_t> presentFamily;
 
-        bool isComplete() {
-            return graphicsFamily.has_value() && presentFamily.has_value();
-        }
-    };
+		bool isComplete() {
+			return graphicsFamily.has_value() && presentFamily.has_value();
+		}
+	};
 
-    struct SwapChainSupportDetails {
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
-    };
+	struct SwapChainSupportDetails {
+		VkSurfaceCapabilitiesKHR capabilities{};
+		std::vector<VkSurfaceFormatKHR> formats;
+		std::vector<VkPresentModeKHR> presentModes;
+	};
 
-    class Renderer {
-    public:
-        void run();
-    private:
-        VkInstance instance;
+	class Renderer {
+	public:
+		void run();
+	private:
+		VkInstance instance;
 
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
-        VkDevice device;
+		VkDevice device;
 
-        VkQueue graphicsQueue;
-        VkQueue presentQueue;
+		VkQueue graphicsQueue;
+		VkQueue presentQueue;
 
-        VkSurfaceKHR surface;
+		VkSurfaceKHR surface;
 
-        // Swap Chain
-        VkSwapchainKHR swapChain;
-        std::vector<VkImage> swapChainImages;
-        VkFormat swapChainImageFormat;
-        VkExtent2D swapChainExtent;
+		// Swap Chain
+		VkSwapchainKHR swapChain;
+		std::vector<VkImage> swapChainImages;
+		VkFormat swapChainImageFormat;
+		VkExtent2D swapChainExtent;
 
-        VkRenderPass renderPass;
-        std::vector<VkImageView> swapChainImageViews;
+		VkRenderPass renderPass;
+		std::vector<VkImageView> swapChainImageViews;
 
-        VkPipelineLayout pipelineLayout;
+		VkPipelineLayout pipelineLayout;
 
-        VkPipeline graphicsPipeline;
+		VkPipeline graphicsPipeline;
 
-        std::vector<VkFramebuffer> swapChainFramebuffers;
+		std::vector<VkFramebuffer> swapChainFramebuffers;
 
-        VkCommandPool commandPool;
+		VkCommandPool commandPool;
 
-        VkCommandBuffer commandBuffer;
+		VkCommandBuffer commandBuffer;
 
-        VkSemaphore imageAvailableSemaphore;
-        VkSemaphore renderFinishedSemaphore;
-        VkFence inFlightFence;
+		VkSemaphore imageAvailableSemaphore;
+		VkSemaphore renderFinishedSemaphore;
+		VkFence inFlightFence;
 
-        VkDebugUtilsMessengerEXT debugMessenger;
+		VkDebugUtilsMessengerEXT debugMessenger;
 
 
-        const std::vector<const char*> validationLayers = {
-                "VK_LAYER_KHRONOS_validation"
-        };
+		const std::vector<const char*> validationLayers = {
+				"VK_LAYER_KHRONOS_validation"
+		};
 
-        const std::vector<const char*> deviceExtensions = {
-                VK_KHR_SWAPCHAIN_EXTENSION_NAME
-        };
+		const std::vector<const char*> deviceExtensions = {
+				VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		};
 
 #ifdef NDEBUG
-        const bool enableValidationLayers = false;
+		const bool enableValidationLayers = false;
 #else
-        const bool enableValidationLayers = true;
+		const bool enableValidationLayers = true;
 #endif
 
-        // Window
-        GLFWwindow* window;
-        const uint32_t WIDTH = 800;
-        const uint32_t HEIGHT = 600;
+		// Window
+		GLFWwindow* window;
+		const uint32_t WIDTH = 800;
+		const uint32_t HEIGHT = 600;
 
-        void initWindow();
+		void initWindow();
 
-        std::vector<const char*> getRequiredExtensions();
+		std::vector<const char*> getRequiredExtensions();
 
-        static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-                VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                VkDebugUtilsMessageTypeFlagsEXT messageType,
-                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                void* pUserData
-        );
+		static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+			VkDebugUtilsMessageTypeFlagsEXT messageType,
+			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+			void* pUserData
+		);
 
-        void createInstance();
+		void createInstance();
 
-        void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
 
-        void setupDebugMessenger();
+		void setupDebugMessenger();
 
-        bool checkValidationLayerSupport();
+		bool checkValidationLayerSupport();
 
-        QueueFamilyIndices findQueueFamilies(VkPhysicalDevice currentDevice);
+		QueueFamilyIndices findQueueFamilies(VkPhysicalDevice currentDevice);
 
-        bool checkDeviceExtensionSupport(VkPhysicalDevice currentDevice);
+		bool checkDeviceExtensionSupport(VkPhysicalDevice currentDevice);
 
-        SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+		SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
-        uint32_t rateDeviceSuitability(VkPhysicalDevice currentDevice);
+		uint32_t rateDeviceSuitability(VkPhysicalDevice currentDevice);
 
-        void pickPhysicalDevice();
+		void pickPhysicalDevice();
 
-        void createLogicalDevice();
+		void createLogicalDevice();
 
-        void createSurface();
+		void createSurface();
 
-        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+		VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 
-        VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+		VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 
-        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+		VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
-        void createSwapChain();
+		void createSwapChain();
 
-        void createImageViews();
+		void createImageViews();
 
-        void createRenderPass();
+		void createRenderPass();
 
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+		VkShaderModule createShaderModule(const std::vector<char>& code);
 
-        void createGraphicsPipeline();
+		void createGraphicsPipeline();
 
-        void createFramebuffers();
+		void createFramebuffers();
 
-        void createCommandPool();
+		void createCommandPool();
 
-        void createCommandBuffer();
+		void createCommandBuffer();
 
-        void createSyncObjects();
+		void createSyncObjects();
 
-        void initVulkan();
+		void initVulkan();
 
-        void recordCommandBuffer(VkCommandBuffer currentCommandBuffer, uint32_t imageIndex);
+		void recordCommandBuffer(VkCommandBuffer currentCommandBuffer, uint32_t imageIndex);
 
-        void drawFrame();
+		void drawFrame();
 
-        void mainLoop();
+		void mainLoop();
 
-        void cleanup();
-    };
+		void cleanup();
+	};
 }
