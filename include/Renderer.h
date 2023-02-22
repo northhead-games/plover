@@ -51,14 +51,17 @@ namespace Plover {
 
 		VkCommandPool commandPool;
 
-		VkCommandBuffer commandBuffer;
+		std::vector<VkCommandBuffer> commandBuffers;
 
-		VkSemaphore imageAvailableSemaphore;
-		VkSemaphore renderFinishedSemaphore;
-		VkFence inFlightFence;
+		std::vector<VkSemaphore> imageAvailableSemaphores;
+		std::vector<VkSemaphore> renderFinishedSemaphores;
+		std::vector<VkFence> inFlightFences;
+
+		bool framebufferResized = false;
+
+		uint32_t currentFrame = 0;
 
 		VkDebugUtilsMessengerEXT debugMessenger;
-
 
 		const std::vector<const char*> validationLayers = {
 				"VK_LAYER_KHRONOS_validation"
@@ -80,6 +83,8 @@ namespace Plover {
 		const uint32_t HEIGHT = 600;
 
 		void initWindow();
+
+		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 		std::vector<const char*> getRequiredExtensions();
 
@@ -142,7 +147,11 @@ namespace Plover {
 
 		void drawFrame();
 
+		void recreateSwapChain();
+
 		void mainLoop();
+
+		void cleanupSwapChain();
 
 		void cleanup();
 	};
