@@ -10,13 +10,14 @@ set(ENV{VULKAN_SDK} $ENV{VULKAN_SDK_PATH})
 find_package(Vulkan REQUIRED)
 message(STATUS ${PROJECT_NAME})
 
-add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h")
+add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VertexBuffer.h" "src/VertexBuffer.cpp")
 
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
+	INTERFACE src/
 	PUBLIC ${Vulkan_INCLUDE_DIRS}
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include

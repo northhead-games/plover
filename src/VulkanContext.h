@@ -1,9 +1,15 @@
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <vector>
-#include <optional>
+#pragma once
+
+#include "VertexBuffer.h"
+#include "includes.h"
 
 namespace Plover {
+	class VertexBuffer; // Forward Decl
+
+	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const uint32_t WIDTH = 800;
+	const uint32_t HEIGHT = 600;
+
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
 		std::optional<uint32_t> presentFamily;
@@ -19,9 +25,18 @@ namespace Plover {
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	class Renderer {
+	class VulkanContext {
 	public:
-		void run();
+		void initWindow();
+
+		void initVulkan();
+
+		VkDevice getDevice();
+		VkPhysicalDevice getPhysicalDevice();
+
+		void mainLoop();
+
+		void cleanup();
 	private:
 		VkInstance instance;
 
@@ -51,6 +66,8 @@ namespace Plover {
 
 		VkCommandPool commandPool;
 
+		VertexBuffer* vertexBuffer;
+
 		std::vector<VkCommandBuffer> commandBuffers;
 
 		std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -64,6 +81,7 @@ namespace Plover {
 		VkDebugUtilsMessengerEXT debugMessenger;
 
 		const std::vector<const char*> validationLayers = {
+
 				"VK_LAYER_KHRONOS_validation"
 		};
 
@@ -77,12 +95,7 @@ namespace Plover {
 		const bool enableValidationLayers = true;
 #endif
 
-		// Window
 		GLFWwindow* window;
-		const uint32_t WIDTH = 800;
-		const uint32_t HEIGHT = 600;
-
-		void initWindow();
 
 		static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -137,11 +150,11 @@ namespace Plover {
 
 		void createCommandPool();
 
+		void createVertexBuffer();
+
 		void createCommandBuffer();
 
 		void createSyncObjects();
-
-		void initVulkan();
 
 		void recordCommandBuffer(VkCommandBuffer currentCommandBuffer, uint32_t imageIndex);
 
@@ -149,10 +162,6 @@ namespace Plover {
 
 		void recreateSwapChain();
 
-		void mainLoop();
-
 		void cleanupSwapChain();
-
-		void cleanup();
 	};
 }
