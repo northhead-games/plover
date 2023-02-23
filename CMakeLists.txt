@@ -17,7 +17,6 @@ add_subdirectory(libraries/glm)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
-	INTERFACE src/
 	PUBLIC ${Vulkan_INCLUDE_DIRS}
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include

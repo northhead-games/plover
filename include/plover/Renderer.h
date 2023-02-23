@@ -1,12 +1,13 @@
 #pragma once
 
-#include "VulkanContext.h"
 
 namespace Plover {
+	class VulkanContext; // Forward Decl
+
 	class Renderer {
 	public:
 		void run();
 	private:
-		VulkanContext vulkanContext;
+		VulkanContext* vulkanContext;
 	};
 }
