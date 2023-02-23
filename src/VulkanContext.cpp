@@ -61,9 +61,9 @@ void validateGLFWExtensions(const char** glfwExtensions, uint32_t glfwExtensionC
 		}
 		if (!found) {
 			char err[256];
-			strcpy_s(err, 256, "required vulkan extension ");
-			strcat_s(err, 256, glfwExtensions[i]);
-			strcat_s(err, 256, " not found");
+			strcpy(err, "required vulkan extension ");
+			strcat(err, glfwExtensions[i]);
+			strcat(err, " not found");
 			throw std::runtime_error(err);
 		}
 	}
@@ -80,6 +80,8 @@ std::vector<const char*> VulkanContext::getRequiredExtensions() {
 	if (enableValidationLayers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
+
+    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 
 	return extensions;
 }
@@ -129,6 +131,8 @@ void VulkanContext::createInstance() {
 	std::vector<const char*> extensions = getRequiredExtensions();
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	createInfo.ppEnabledExtensionNames = extensions.data();
+
+    createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create instance!");
