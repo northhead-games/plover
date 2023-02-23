@@ -27,16 +27,14 @@ namespace Plover {
 
 	class VulkanContext {
 	public:
-		void initWindow();
-
-		void initVulkan();
+		VulkanContext();
+		~VulkanContext();
 
 		VkDevice getDevice();
 		VkPhysicalDevice getPhysicalDevice();
 
 		void mainLoop();
 
-		void cleanup();
 	private:
 		VkInstance instance;
 
@@ -107,6 +105,12 @@ namespace Plover {
 			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 			void* pUserData
 		);
+
+		void initWindow();
+
+		void initVulkan();
+
+		void cleanup();
 
 		void createInstance();
 

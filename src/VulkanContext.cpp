@@ -5,6 +5,17 @@
 
 using namespace Plover;
 
+Plover::VulkanContext::VulkanContext()
+{
+	initWindow();
+	initVulkan();
+}
+
+Plover::VulkanContext::~VulkanContext()
+{
+	cleanup();
+}
+
 VkDevice VulkanContext::getDevice() {
 	if (device == nullptr) {
 		throw std::runtime_error("device has not been created!");
