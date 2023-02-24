@@ -259,7 +259,6 @@ bool VulkanContext::checkDeviceExtensionSupport(VkPhysicalDevice currentDevice) 
 	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 	vkEnumerateDeviceExtensionProperties(currentDevice, nullptr, &extensionCount, availableExtensions.data());
 
-	std::cout << deviceExtensions.at(0) << std::endl;
 	std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
 	for (const VkExtensionProperties& extension : availableExtensions) {
