@@ -3,11 +3,15 @@
 #include "includes.h"
 
 namespace Plover {
-	class VertexBuffer; // Forward Decl
-
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
+
+    struct CreateBufferInfo {
+        VkDeviceSize size;
+        VkBufferUsageFlags usage;
+        VkMemoryPropertyFlags properties;
+    };
 
 	struct Vertex {
 		glm::vec2 pos;
@@ -55,9 +59,6 @@ namespace Plover {
 
 	class VulkanContext {
 	public:
-		VkDevice getDevice();
-		VkPhysicalDevice getPhysicalDevice();
-
 		void initWindow();
 
 		void initVulkan();
@@ -68,10 +69,15 @@ namespace Plover {
 
 	private:
 		const std::vector<Vertex> vertices = {
-			{{ 0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-			{{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
-			{{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}}
+			{{ -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+			{{  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+			{{  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{ -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}},
 		};
+
+        const std::vector<uint16_t> indices = {
+                0, 1, 2, 2, 3, 0
+        };
 
 		VkInstance instance;
 
@@ -99,10 +105,13 @@ namespace Plover {
 
 		std::vector<VkFramebuffer> swapChainFramebuffers;
 
-		VkCommandPool commandPool;
+		VkCommandPool drawCommandPool;
+        VkCommandPool copyCommandPool;
 
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexBufferMemory;
+        VkBuffer indexBuffer;
+        VkDeviceMemory indexBufferMemory;
 
 		std::vector<VkCommandBuffer> commandBuffers;
 
@@ -185,11 +194,19 @@ namespace Plover {
 
 		void createFramebuffers();
 
-		void createCommandPool();
+		void createCommandPool(VkCommandPoolCreateFlagBits, VkCommandPool &commandPool);
+
+        void createCommandPools();
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
+        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+
 		void createVertexBuffer();
+
+        void createIndexBuffer();
 
 		void createCommandBuffer();
 
