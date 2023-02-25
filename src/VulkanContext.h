@@ -1,6 +1,5 @@
 #pragma once
 
-#include "VertexBuffer.h"
 #include "includes.h"
 
 namespace Plover {
@@ -9,6 +8,35 @@ namespace Plover {
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
+
+	struct Vertex {
+		glm::vec2 pos;
+		glm::vec3 color;
+
+		static VkVertexInputBindingDescription getBindingDescription() {
+			VkVertexInputBindingDescription bindingDescription{};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(Vertex);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+			return attributeDescriptions;
+		}
+	};
 
 	struct QueueFamilyIndices {
 		std::optional<uint32_t> graphicsFamily;
@@ -27,15 +55,24 @@ namespace Plover {
 
 	class VulkanContext {
 	public:
-		VulkanContext();
-		~VulkanContext();
-
 		VkDevice getDevice();
 		VkPhysicalDevice getPhysicalDevice();
 
+		void initWindow();
+
+		void initVulkan();
+
 		void mainLoop();
 
+		void cleanup();
+
 	private:
+		const std::vector<Vertex> vertices = {
+			{{ 0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+			{{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
+			{{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}}
+		};
+
 		VkInstance instance;
 
 		VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -64,7 +101,8 @@ namespace Plover {
 
 		VkCommandPool commandPool;
 
-		VertexBuffer* vertexBuffer;
+		VkBuffer vertexBuffer;
+		VkDeviceMemory vertexBufferMemory;
 
 		std::vector<VkCommandBuffer> commandBuffers;
 
@@ -85,7 +123,7 @@ namespace Plover {
 		const std::vector<const char*> deviceExtensions = {
 				VK_KHR_SWAPCHAIN_EXTENSION_NAME
 #ifdef __APPLE__
-                ,"VK_KHR_portability_subset"
+				,"VK_KHR_portability_subset"
 #endif
 		};
 
@@ -107,13 +145,6 @@ namespace Plover {
 			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 			void* pUserData
 		);
-
-		void initWindow();
-
-		void initVulkan();
-
-		void cleanup();
-
 		void createInstance();
 
 		void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
@@ -155,6 +186,8 @@ namespace Plover {
 		void createFramebuffers();
 
 		void createCommandPool();
+
+		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		void createVertexBuffer();
 

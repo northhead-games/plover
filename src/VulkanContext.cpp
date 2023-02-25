@@ -1,19 +1,7 @@
 #include "VulkanContext.h"
-#include "VertexBuffer.h"
 #include "includes.h"
 
 using namespace Plover;
-
-Plover::VulkanContext::VulkanContext()
-{
-	initWindow();
-	initVulkan();
-}
-
-Plover::VulkanContext::~VulkanContext()
-{
-	cleanup();
-}
 
 VkDevice VulkanContext::getDevice() {
 	if (device == nullptr) {
@@ -59,11 +47,8 @@ void validateGLFWExtensions(const char** glfwExtensions, uint32_t glfwExtensionC
 			}
 		}
 		if (!found) {
-			char err[256];
-			strcpy(err, "required vulkan extension ");
-			strcat(err, glfwExtensions[i]);
-			strcat(err, " not found");
-			throw std::runtime_error(err);
+			std::string extensionName = glfwExtensions[i];
+			throw std::runtime_error("required extension " + extensionName + " not found!");
 		}
 	}
 }
@@ -81,7 +66,7 @@ std::vector<const char*> VulkanContext::getRequiredExtensions() {
 	}
 
 #ifdef __APPLE__
-    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+	extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 #endif
 
 	return extensions;
@@ -134,12 +119,12 @@ void VulkanContext::createInstance() {
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
 #ifdef __APPLE__
-    createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+	createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
 
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create instance!");
-	}
+}
 }
 
 bool VulkanContext::checkValidationLayerSupport() {
@@ -817,9 +802,51 @@ void VulkanContext::createCommandPool() {
 	}
 }
 
-void Plover::VulkanContext::createVertexBuffer()
+uint32_t VulkanContext::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if (typeFilter & (1 << i) &&
+			(memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+
+	throw std::runtime_error("failed to find suitable memory type");
+}
+
+void VulkanContext::createVertexBuffer()
 {
-	vertexBuffer = new VertexBuffer(this);
+	VkBufferCreateInfo bufferInfo{};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(vertices[0]) * vertices.size();
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create vertex buffer!");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate vertex buffer memory");
+	}
+
+	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+	void* data;
+	vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+	memcpy(data, vertices.data(), (size_t)bufferInfo.size);
+	vkUnmapMemory(device, vertexBufferMemory);
 }
 
 void VulkanContext::createCommandBuffer() {
@@ -910,11 +937,11 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer cmdBuffer, uint32_t imag
 	scissor.extent = swapChainExtent;
 	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-	VkBuffer vertexBuffers[] = { vertexBuffer->buffer };
+	VkBuffer vertexBuffers[] = { vertexBuffer };
 	VkDeviceSize offsets[] = { 0 };
 	vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
 
-	vkCmdDraw(cmdBuffer, static_cast<uint32_t>(vertexBuffer->vertices.size()), 1, 0, 0);
+	vkCmdDraw(cmdBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 	vkCmdEndRenderPass(cmdBuffer);
 
@@ -1031,7 +1058,8 @@ void VulkanContext::cleanupSwapChain() {
 void VulkanContext::cleanup() {
 	cleanupSwapChain();
 
-	delete vertexBuffer;
+	vkDestroyBuffer(device, vertexBuffer, nullptr);
+	vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);

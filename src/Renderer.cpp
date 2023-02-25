@@ -6,8 +6,10 @@
 using namespace Plover;
 
 void Renderer::run() {
-	vulkanContext = new VulkanContext;
-	vulkanContext->mainLoop();
-	delete vulkanContext;
+	VulkanContext vulkanContext;
+	vulkanContext.initWindow();
+	vulkanContext.initVulkan();
+	vulkanContext.mainLoop();
+	vulkanContext.cleanup();
 }
 
