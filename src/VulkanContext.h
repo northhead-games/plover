@@ -7,10 +7,10 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
-    struct CreateBufferInfo {
-        VkDeviceSize size;
-        VkBufferUsageFlags usage;
-        VkMemoryPropertyFlags properties;
+    struct UniformBufferObject {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
     };
 
 	struct Vertex {
@@ -50,6 +50,12 @@ namespace Plover {
 			return graphicsFamily.has_value() && presentFamily.has_value();
 		}
 	};
+
+    struct CreateBufferInfo {
+        VkDeviceSize size;
+        VkBufferUsageFlags usage;
+        VkMemoryPropertyFlags properties;
+    };
 
 	struct SwapChainSupportDetails {
 		VkSurfaceCapabilitiesKHR capabilities{};
@@ -99,6 +105,7 @@ namespace Plover {
 		VkRenderPass renderPass;
 		std::vector<VkImageView> swapChainImageViews;
 
+        VkDescriptorSetLayout descriptorSetLayout;
 		VkPipelineLayout pipelineLayout;
 
 		VkPipeline graphicsPipeline;
@@ -108,10 +115,17 @@ namespace Plover {
 		VkCommandPool drawCommandPool;
         VkCommandPool copyCommandPool;
 
+        VkDescriptorPool descriptorPool;
+        std::vector<VkDescriptorSet> descriptorSets;
+
 		VkBuffer vertexBuffer;
 		VkDeviceMemory vertexBufferMemory;
         VkBuffer indexBuffer;
         VkDeviceMemory indexBufferMemory;
+
+        std::vector<VkBuffer> uniformBuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<void*> uniformBuffersMapped;
 
 		std::vector<VkCommandBuffer> commandBuffers;
 
@@ -188,6 +202,8 @@ namespace Plover {
 
 		void createRenderPass();
 
+        void createDescriptorSetLayout();
+
 		VkShaderModule createShaderModule(const std::vector<char>& code);
 
 		void createGraphicsPipeline();
@@ -202,17 +218,25 @@ namespace Plover {
 
         void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        void createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
 		void createVertexBuffer();
 
         void createIndexBuffer();
+
+        void createUniformBuffers();
+
+        void createDescriptorPool();
+
+        void createDescriptorSets();
 
 		void createCommandBuffer();
 
 		void createSyncObjects();
 
 		void recordCommandBuffer(VkCommandBuffer currentCommandBuffer, uint32_t imageIndex);
+
+        void updateUniformBuffer(uint32_t currentImage);
 
 		void drawFrame();
 
