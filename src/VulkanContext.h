@@ -17,6 +17,7 @@ namespace Plover {
 	struct Vertex {
 		glm::vec3 pos;
 		glm::vec3 color;
+		glm::vec2 texCoord;
 
 		static VkVertexInputBindingDescription getBindingDescription() {
 			VkVertexInputBindingDescription bindingDescription{};
@@ -27,8 +28,8 @@ namespace Plover {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
 			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -38,6 +39,11 @@ namespace Plover {
 			attributeDescriptions[1].location = 1;
 			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 			attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+			attributeDescriptions[2].binding = 0;
+			attributeDescriptions[2].location = 2;
+			attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
 			return attributeDescriptions;
 		}
@@ -60,14 +66,14 @@ namespace Plover {
 
 	struct VulkanContext {
 		const std::vector<Vertex> vertices = {
-			{{ -0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}},
-			{{  0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}},
-			{{  0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}},
-			{{ -0.5f,  0.5f,  0.0f}, {1.0f, 1.0f, 1.0f}},
-			{{ -0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-			{{  0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-			{{  0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
-			{{ -0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+			{{ -0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{  0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{ -0.5f,  0.5f,  0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+			{{ -0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{  0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+			{{ -0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 		};
 
 		const std::vector<uint16_t> indices = {
@@ -120,7 +126,7 @@ namespace Plover {
 		VkPipeline graphicsPipeline;
 
 		VkCommandPool drawCommandPool;
-		VkCommandPool copyCommandPool;
+		VkCommandPool transientCommandPool;
 
 		VkDescriptorPool descriptorPool;
 		std::vector<VkDescriptorSet> descriptorSets;
@@ -133,6 +139,11 @@ namespace Plover {
 		std::vector<VkBuffer> uniformBuffers;
 		std::vector<Allocation> uniformBuffersAllocation;
 		std::vector<void*> uniformBuffersMapped;
+
+		VkImage textureImage;
+		Allocation textureAllocation;
+		VkImageView textureImageView;
+		VkSampler textureSampler;
 
 		VkImage depthImage;
 		Allocation depthImageAllocation;
@@ -221,6 +232,16 @@ namespace Plover {
 
 		void createCommandPools();
 
+		void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+
+		void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+		void createTextureImage();
+
+		void createTextureImageView();
+
+		void createTextureSampler();
+
 		VkFormat findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 		VkFormat findDepthFormat();
@@ -228,6 +249,10 @@ namespace Plover {
 		void createDepthResources();
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+		VkCommandBuffer beginSingleTimeCommands();
+
+		void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
