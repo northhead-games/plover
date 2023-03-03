@@ -52,21 +52,6 @@ namespace Plover {
 		}
 	};
 
-	struct CreateBufferInfo {
-		VkDeviceSize size;
-		VkBufferUsageFlags usage;
-		VkMemoryPropertyFlags properties;
-	};
-
-	struct CreateImageInfo {
-		uint32_t width;
-		uint32_t height;
-		VkFormat format;
-		VkImageTiling tiling;
-		VkImageUsageFlags usage;
-		VkMemoryPropertyFlags properties;
-	};
-
 	struct SwapChainSupportDetails {
 		VkSurfaceCapabilitiesKHR capabilities{};
 		std::vector<VkSurfaceFormatKHR> formats;
@@ -236,8 +221,6 @@ namespace Plover {
 
 		void createCommandPools();
 
-		void createImage(CreateImageInfo createImage, VkImage& image, Allocation& imageMemory);
-
 		VkFormat findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 		VkFormat findDepthFormat();
@@ -247,8 +230,6 @@ namespace Plover {
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-
-		void createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, Allocation& bufferAllocation);
 
 		void createVertexBuffer();
 

@@ -17,6 +17,21 @@ namespace Plover {
 		VkMemoryPropertyFlags properties;
 	};
 
+	struct CreateBufferInfo {
+		VkDeviceSize size;
+		VkBufferUsageFlags usage;
+		VkMemoryPropertyFlags properties;
+	};
+
+	struct CreateImageInfo {
+		uint32_t width;
+		uint32_t height;
+		VkFormat format;
+		VkImageTiling tiling;
+		VkImageUsageFlags usage;
+		VkMemoryPropertyFlags properties;
+	};
+
 	struct VulkanAllocator {
 		VulkanContext* context;
 		VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
@@ -24,6 +39,9 @@ namespace Plover {
 		void init(VulkanContext* context);
 
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+		void createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, Allocation& bufferAllocation);
+		void createImage(CreateImageInfo createInfo, VkImage& buffer, Allocation& bufferAllocation);
 
 		void allocate(AllocationCreateInfo createInfo, Allocation& allocation);
 

@@ -858,39 +858,6 @@ void VulkanContext::createCommandPools() {
 	createCommandPool(copyFlags, copyCommandPool);
 }
 
-void VulkanContext::createImage(CreateImageInfo createImage, VkImage& image, Allocation& imageAllocation)
-{
-	VkImageCreateInfo imageInfo{};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = createImage.width;
-	imageInfo.extent.height = createImage.height;
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = createImage.format;
-	imageInfo.tiling = createImage.tiling;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = createImage.usage;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create image!");
-	}
-
-	VkMemoryRequirements memoryRequirements;
-	vkGetImageMemoryRequirements(device, image, &memoryRequirements);
-
-	AllocationCreateInfo allocateInfo{};
-	allocateInfo.properties = createImage.properties;
-	allocateInfo.requirements = memoryRequirements;
-
-	allocator.allocate(allocateInfo, imageAllocation);
-
-	vkBindImageMemory(device, image, imageAllocation.memoryHandle, imageAllocation.offset);
-}
 
 VkFormat VulkanContext::findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
@@ -934,7 +901,7 @@ void VulkanContext::createDepthResources() {
 	imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	imageInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	createImage(imageInfo, depthImage, depthImageAllocation);
+	allocator.createImage(imageInfo, depthImage, depthImageAllocation);
 	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
@@ -950,30 +917,6 @@ uint32_t VulkanContext::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlag
 	}
 
 	throw std::runtime_error("failed to find suitable memory type");
-}
-
-void VulkanContext::createBuffer(CreateBufferInfo createInfo,
-	VkBuffer& buffer,
-	Allocation& bufferAllocation) {
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = createInfo.size;
-	bufferInfo.usage = createInfo.usage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create buffer!");
-	}
-
-	VkMemoryRequirements memoryRequirements;
-	vkGetBufferMemoryRequirements(device, buffer, &memoryRequirements);
-
-	AllocationCreateInfo allocateInfo{};
-	allocateInfo.requirements = memoryRequirements;
-	allocateInfo.properties = createInfo.properties;
-	allocator.allocate(allocateInfo, bufferAllocation);
-
-	vkBindBufferMemory(device, buffer, bufferAllocation.memoryHandle, bufferAllocation.offset);
 }
 
 void VulkanContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -1022,7 +965,7 @@ void VulkanContext::createVertexBuffer()
 
 	VkBuffer stagingBuffer;
 	Allocation stagingBufferAllocation;
-	createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
+	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
 	vkMapMemory(device, stagingBufferAllocation.memoryHandle, stagingBufferAllocation.offset, stagingBufferAllocation.size, 0, &data);
@@ -1033,7 +976,7 @@ void VulkanContext::createVertexBuffer()
 	vertexCreateInfo.size = bufferSize;
 	vertexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	createBuffer(vertexCreateInfo, vertexBuffer, vertexBufferAllocation);
+	allocator.createBuffer(vertexCreateInfo, vertexBuffer, vertexBufferAllocation);
 
 	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -1051,7 +994,7 @@ void VulkanContext::createIndexBuffer()
 
 	VkBuffer stagingBuffer;
 	Allocation stagingBufferAllocation;
-	createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
+	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
 	vkMapMemory(device, stagingBufferAllocation.memoryHandle, stagingBufferAllocation.offset, stagingBufferAllocation.size, 0, &data);
@@ -1062,7 +1005,7 @@ void VulkanContext::createIndexBuffer()
 	indexCreateInfo.size = bufferSize;
 	indexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	createBuffer(indexCreateInfo, indexBuffer, indexBufferAllocation);
+	allocator.createBuffer(indexCreateInfo, indexBuffer, indexBufferAllocation);
 
 	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
 
@@ -1084,7 +1027,7 @@ void VulkanContext::createUniformBuffers() {
 		createInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
 		// Persistent mapping
-		createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocation[i]);
+		allocator.createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocation[i]);
 		vkMapMemory(device,
 			uniformBuffersAllocation[i].memoryHandle,
 			uniformBuffersAllocation[i].offset,
