@@ -1584,6 +1584,7 @@ void VulkanContext::cleanup() {
 	vkDestroyCommandPool(device, drawCommandPool, nullptr);
 	vkDestroyCommandPool(device, transientCommandPool, nullptr);
 
+    allocator.cleanup();
 	vkDestroyDevice(device, nullptr);
 
 	if (enableValidationLayers) {
