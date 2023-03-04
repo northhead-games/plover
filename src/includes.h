@@ -6,10 +6,13 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <chrono>
+#include <unordered_map>
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>

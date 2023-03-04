@@ -1,9 +1,18 @@
 #pragma once
 
+#include<string>
+#include<vector>
+
+typedef uint32_t MeshID;
 
 namespace Plover {
-	class Renderer {
-	public:
+    struct VulkanContext;
+
+	struct Renderer {
+        VulkanContext* context;
+
+        void init();
 		void run();
+        MeshID loadModel(const std::string name);
 	};
 }

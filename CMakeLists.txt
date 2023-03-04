@@ -10,7 +10,7 @@ set(ENV{VULKAN_SDK} $ENV{VULKAN_SDK_PATH})
 find_package(Vulkan REQUIRED)
 message(STATUS ${PROJECT_NAME})
 
-add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp")
+add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp" src/Mesh.h)
 
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
