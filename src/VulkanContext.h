@@ -8,6 +8,9 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
+    const std::string MODEL_PATH = "resources/models/viking_room.obj";
+    const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
+
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
@@ -65,7 +68,7 @@ namespace Plover {
 	};
 
 	struct VulkanContext {
-		const std::vector<Vertex> vertices = {
+		const std::vector<Vertex> vertices_ = {
 			{{ -0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
 			{{  0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
 			{{  0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
@@ -76,7 +79,7 @@ namespace Plover {
 			{{ -0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 		};
 
-		const std::vector<uint16_t> indices = {
+		const std::vector<uint16_t> indices_ = {
 				0, 1, 2, 2, 3, 0,
 				4, 5, 6, 6, 7, 4,
 		};
@@ -131,6 +134,8 @@ namespace Plover {
 		VkDescriptorPool descriptorPool;
 		std::vector<VkDescriptorSet> descriptorSets;
 
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
 		VkBuffer vertexBuffer;
 		Allocation vertexBufferAllocation;
 		VkBuffer indexBuffer;
@@ -248,13 +253,13 @@ namespace Plover {
 
 		void createDepthResources();
 
-		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-
 		VkCommandBuffer beginSingleTimeCommands();
 
 		void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+        void loadModel();
 
 		void createVertexBuffer();
 
