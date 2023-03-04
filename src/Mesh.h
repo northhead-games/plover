@@ -44,8 +44,13 @@ namespace Plover {
     struct Mesh {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
-    };
 
+        VkBuffer vertexBuffer;
+        Allocation vertexAllocation;
+
+        VkBuffer indexBuffer;
+        Allocation indexAllocation;
+    };
 }
 
 namespace std {

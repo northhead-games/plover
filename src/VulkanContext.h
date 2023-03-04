@@ -94,7 +94,8 @@ namespace Plover {
         std::vector<Vertex> _vertices;
         std::vector<uint32_t> _indices;
 
-        MeshData meshData;
+        MeshData _meshData;
+        std::unordered_map<size_t, Mesh> meshes;
 
 		std::vector<VkBuffer> uniformBuffers;
 		std::vector<Allocation> uniformBuffersAllocations;
@@ -216,9 +217,9 @@ namespace Plover {
 
         size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 
-		size_t createVertexBuffer(std::vector<Vertex> vertices);
+		void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, Allocation& allocation);
 
-		size_t createIndexBuffer(std::vector<uint32_t> indices);
+		void createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, Allocation& allocation);
 
 		void createUniformBuffers();
 

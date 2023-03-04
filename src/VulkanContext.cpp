@@ -1064,7 +1064,6 @@ bool hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-
 void VulkanContext::createDepthResources() {
 	VkFormat depthFormat = findDepthFormat();
 
@@ -1127,18 +1126,24 @@ void VulkanContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
 
 
 size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices) {
-    size_t vertIdx = createVertexBuffer(vertices);
-    size_t indIdx = createIndexBuffer(indices);
-    assert(vertIdx == indIdx);
+    Mesh mesh;
+    static size_t nextId = 0;
 
-    return vertIdx;
+    mesh.vertices = vertices;
+    mesh.indices = indices;
+    createVertexBuffer(vertices, mesh.vertexBuffer, mesh.vertexAllocation);
+    createIndexBuffer(indices, mesh.indexBuffer, mesh.indexAllocation);
+
+    size_t id = nextId;
+    meshes[id] = mesh;
+    nextId++;
+
+    return id;
 }
 
-size_t VulkanContext::createVertexBuffer(std::vector<Vertex> vertices)
+void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, Allocation& allocation)
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    VkBuffer vertexBuffer{};
-    Allocation vertexBufferAllocation{};
 
 	CreateBufferInfo stagingCreateInfo{};
 	stagingCreateInfo.size = bufferSize;
@@ -1158,24 +1163,16 @@ size_t VulkanContext::createVertexBuffer(std::vector<Vertex> vertices)
 	vertexCreateInfo.size = bufferSize;
 	vertexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	allocator.createBuffer(vertexCreateInfo, vertexBuffer, vertexBufferAllocation);
+	allocator.createBuffer(vertexCreateInfo, buffer, allocation);
 
-	copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+	copyBuffer(stagingBuffer, buffer, bufferSize);
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	allocator.free(stagingBufferAllocation);
-
-    meshData.vertexBuffers.push_back(vertexBuffer);
-    meshData.vertexAllocations.push_back(vertexBufferAllocation);
-
-    assert(meshData.vertexBuffers.size() == meshData.vertexAllocations.size());
-
-    return meshData.vertexBuffers.size() - 1;
 }
 
-size_t VulkanContext::createIndexBuffer(std::vector<uint32_t> indices)
+void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, Allocation& allocation)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-    VkBuffer indexBuffer{};
     Allocation indexBufferAllocation{};
 
 	CreateBufferInfo stagingCreateInfo{};
@@ -1196,18 +1193,12 @@ size_t VulkanContext::createIndexBuffer(std::vector<uint32_t> indices)
 	indexCreateInfo.size = bufferSize;
 	indexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	allocator.createBuffer(indexCreateInfo, indexBuffer, indexBufferAllocation);
+	allocator.createBuffer(indexCreateInfo, buffer, indexBufferAllocation);
 
-	copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+	copyBuffer(stagingBuffer, buffer, bufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	allocator.free(stagingBufferAllocation);
-
-    meshData.indexBuffers.push_back(indexBuffer);
-    meshData.indexAllocations.push_back(indexBufferAllocation);
-
-    assert(meshData.indexBuffers.size() == meshData.indexAllocations.size());
-    return meshData.indexBuffers.size() - 1;
 }
 
 void VulkanContext::createUniformBuffers() {
@@ -1399,15 +1390,16 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 	scissor.extent = swapChainExtent;
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    for (int i = 0; i < meshData.vertexBuffers.size(); i++) {
-        VkBuffer vertexBuffers[] = { meshData.vertexBuffers[i] };
+    for (auto kv : meshes) {
+        Mesh mesh = kv.second;
+        VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdBindIndexBuffer(commandBuffer, meshData.indexBuffers[i], 0, VK_INDEX_TYPE_UINT32);
+        vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(meshData.indexAllocations[0].size / sizeof(uint32_t)), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
     }
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -1448,6 +1440,7 @@ void VulkanContext::updateUniformBuffer(uint32_t currentImage) {
 	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
+
 
 	memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 }
@@ -1557,12 +1550,12 @@ void VulkanContext::cleanup() {
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-    for (int i = 0; i < meshData.vertexBuffers.size(); i++) {
-        vkDestroyBuffer(device, meshData.vertexBuffers[i], nullptr);
-        allocator.free(meshData.vertexAllocations[i]);
-
-        vkDestroyBuffer(device, meshData.indexBuffers[i], nullptr);
-        allocator.free(meshData.indexAllocations[i]);
+    for (auto kv : meshes) {
+        Mesh mesh = kv.second;
+        vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
+        allocator.free(mesh.vertexAllocation);
+        vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+        allocator.free(mesh.indexAllocation);
     }
 
 	vkDestroyPipeline(device, graphicsPipeline, nullptr);
