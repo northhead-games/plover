@@ -7,6 +7,10 @@ void VulkanAllocator::init(VulkanContext* context) {
 	this->context = context;
 	vkGetPhysicalDeviceMemoryProperties(context->physicalDevice, &deviceMemoryProperties);
     blocks.resize(deviceMemoryProperties.memoryTypeCount);
+
+    for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
+        blocks[i] = nullptr;
+    }
 }
 
 uint32_t VulkanAllocator::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -171,6 +175,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
         } while (block != nullptr);
     }
 
+    // If a suitable memory block was not found create a new block and assign the data.
     int allocationMult = 1;
     // If the current blocks are not big enough to fit the data.
     if (createInfo.requirements.size > getAllocationSize(allocateInfo.memoryTypeIndex)) {
@@ -181,9 +186,9 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
     block->next = blocks[allocateInfo.memoryTypeIndex];
     blocks[allocateInfo.memoryTypeIndex] = block;
 
-    block->head->next = &allocation;
     initializeAllocation(createInfo, allocation, needsOwnBlock, block, 0);
 
+    block->head->next = &allocation;
     allocation.prev = block->head;
     allocation.next = nullptr;
 }
@@ -212,6 +217,7 @@ Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateIn
     sentinel->size = 0;
     sentinel->prev = nullptr;
     sentinel->next = nullptr;
+    sentinel->block = block;
 
     block->head = sentinel;
     VkResult res = vkAllocateMemory(context->device, &allocateInfo, nullptr, &block->memoryHandle);
@@ -254,8 +260,8 @@ void VulkanAllocator::cleanup() {
     for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++) {
         Block* block = blocks[i];
         while(block != nullptr) {
-            std::free(blocks[i]->head);
-            vkFreeMemory(context->device, blocks[i]->memoryHandle, nullptr);
+            std::free(block->head);
+            vkFreeMemory(context->device, block->memoryHandle, nullptr);
             Block* next = block->next;
             std::free(block);
             block = next;
