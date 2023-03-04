@@ -20,7 +20,11 @@ void Renderer::run() {
     delete this->context;
 }
 
-MeshID Renderer::loadModel(const std::string name) {
+MaterialID Renderer::createMaterial() {
+    return context->createMaterial();
+}
+
+MeshID Renderer::loadModel(const std::string name, MaterialID materialId) {
     Mesh mesh;
 
     tinyobj::attrib_t attrib;
@@ -60,5 +64,5 @@ MeshID Renderer::loadModel(const std::string name) {
         }
     }
 
-    return context->addMesh(mesh.vertices, mesh.indices);
+    return context->addMesh(mesh.vertices, mesh.indices, materialId);
 }

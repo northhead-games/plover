@@ -2,6 +2,11 @@
 #include "includes.h"
 
 namespace Plover {
+    struct Material {
+        VkPipeline pipeline;
+        VkPipelineLayout pipelineLayout;
+    };
+
     struct Vertex {
         glm::vec3 pos;
         glm::vec3 color;
@@ -50,6 +55,8 @@ namespace Plover {
 
         VkBuffer indexBuffer;
         Allocation indexAllocation;
+
+        size_t materialId;
     };
 }
 

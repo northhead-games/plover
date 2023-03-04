@@ -32,14 +32,6 @@ namespace Plover {
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-    struct MeshData {
-        std::vector<VkBuffer> vertexBuffers;
-        std::vector<Allocation> vertexAllocations;
-
-        std::vector<VkBuffer> indexBuffers;
-        std::vector<Allocation> indexAllocations;
-    };
-
 	struct VulkanContext {
 		const std::vector<const char*> validationLayers = {
 				"VK_LAYER_KHRONOS_validation"
@@ -81,9 +73,6 @@ namespace Plover {
 		VkRenderPass renderPass;
 
 		VkDescriptorSetLayout descriptorSetLayout;
-		VkPipelineLayout pipelineLayout;
-
-		VkPipeline graphicsPipeline;
 
 		VkCommandPool drawCommandPool;
 		VkCommandPool transientCommandPool;
@@ -91,11 +80,8 @@ namespace Plover {
 		VkDescriptorPool descriptorPool;
 		std::vector<VkDescriptorSet> descriptorSets;
 
-        std::vector<Vertex> _vertices;
-        std::vector<uint32_t> _indices;
-
-        MeshData _meshData;
         std::unordered_map<size_t, Mesh> meshes;
+        std::unordered_map<size_t, Material> materials;
 
 		std::vector<VkBuffer> uniformBuffers;
 		std::vector<Allocation> uniformBuffersAllocations;
@@ -185,7 +171,9 @@ namespace Plover {
 
 		VkShaderModule createShaderModule(const std::vector<char>& code);
 
-		void createGraphicsPipeline();
+		void createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayout& pipelineLayout);
+
+        size_t createMaterial();
 
 		void createFramebuffers();
 
@@ -215,7 +203,7 @@ namespace Plover {
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
+        size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId);
 
 		void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, Allocation& allocation);
 

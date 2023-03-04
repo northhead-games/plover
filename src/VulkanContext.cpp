@@ -660,7 +660,7 @@ VkShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) 
 	return shaderModule;
 }
 
-void VulkanContext::createGraphicsPipeline() {
+void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayout& pipelineLayout) {
 	std::vector<char> vertShaderCode = readFile("resources/spirv/vert.spv");
 	std::vector<char> fragShaderCode = readFile("resources/spirv/frag.spv");
 
@@ -824,12 +824,24 @@ void VulkanContext::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
 
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
+}
+
+size_t VulkanContext::createMaterial() {
+    static size_t nextId = 0;
+    Material material;
+
+    createGraphicsPipeline(material.pipeline, material.pipelineLayout);
+    size_t id = nextId;
+    materials[id] = material;
+    nextId++;
+
+    return id;
 }
 
 void VulkanContext::createFramebuffers() {
@@ -1125,7 +1137,7 @@ void VulkanContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
 }
 
 
-size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices) {
+size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
     Mesh mesh;
     static size_t nextId = 0;
 
@@ -1133,6 +1145,7 @@ size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t
     mesh.indices = indices;
     createVertexBuffer(vertices, mesh.vertexBuffer, mesh.vertexAllocation);
     createIndexBuffer(indices, mesh.indexBuffer, mesh.indexAllocation);
+    mesh.materialId = materialId;
 
     size_t id = nextId;
     meshes[id] = mesh;
@@ -1173,7 +1186,6 @@ void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& b
 void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, Allocation& allocation)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-    Allocation indexBufferAllocation{};
 
 	CreateBufferInfo stagingCreateInfo{};
 	stagingCreateInfo.size = bufferSize;
@@ -1195,7 +1207,7 @@ void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& b
 	indexCreateInfo.size = bufferSize;
 	indexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	allocator.createBuffer(indexCreateInfo, buffer, indexBufferAllocation);
+	allocator.createBuffer(indexCreateInfo, buffer, allocation);
 
 	copyBuffer(stagingBuffer, buffer, bufferSize);
 
@@ -1334,7 +1346,6 @@ void VulkanContext::initVulkan() {
 	createImageViews();
 	createRenderPass();
 	createDescriptorSetLayout();
-	createGraphicsPipeline();
 	createCommandPools();
 	createTextureImage();
 	createTextureImageView();
@@ -1373,7 +1384,6 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 	renderPassInfo.pClearValues = clearValues.data();
 
 	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 	VkViewport viewport{};
 	viewport.x = 0.0f;
@@ -1391,13 +1401,16 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 
     for (auto kv : meshes) {
         Mesh mesh = kv.second;
+        Material material = materials[mesh.materialId];
         VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
         VkDeviceSize offsets[] = { 0 };
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipeline);
+
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
         vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
     }
 
@@ -1557,8 +1570,11 @@ void VulkanContext::cleanup() {
         allocator.free(mesh.indexAllocation);
     }
 
-	vkDestroyPipeline(device, graphicsPipeline, nullptr);
-	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    for (auto kv : materials) {
+        Material material = kv.second;
+        vkDestroyPipeline(device, material.pipeline, nullptr);
+        vkDestroyPipelineLayout(device, material.pipelineLayout, nullptr);
+    }
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroyBuffer(device, uniformBuffers[i], nullptr);

@@ -3,16 +3,19 @@
 #include<string>
 #include<vector>
 
-typedef uint32_t MeshID;
 
 namespace Plover {
     struct VulkanContext;
+
+    typedef uint32_t MeshID;
+    typedef size_t MaterialID;
 
 	struct Renderer {
         VulkanContext* context;
 
         void init();
 		void run();
-        MeshID loadModel(const std::string name);
+        MaterialID createMaterial();
+        MeshID loadModel(const std::string name, MaterialID materialId);
 	};
 }

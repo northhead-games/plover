@@ -44,6 +44,7 @@ Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateIn
     Block *block = (Block*) malloc(sizeof(Block));
     block->next = nullptr;
     block->size = getAllocationSize(allocateInfo.memoryTypeIndex) * allocationMult;
+    block->mapCounter = 0;
     allocateInfo.allocationSize = block->size;
 
     Allocation* sentinel = (Allocation*) malloc(sizeof(Allocation));
@@ -140,6 +141,7 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, A
 }
 
 void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **ppData) {
+    std::cout << allocation.block->mapCounter << std::endl;
     if (allocation.block->mapCounter != 0) {
         allocation.block->mapCounter++;
     } else {
@@ -148,7 +150,9 @@ void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **p
         vkMapMemory(device, allocation.memoryHandle, 0, VK_WHOLE_SIZE, 0, &data);
         allocation.block->data = data;
     }
+    std::cout << allocation.block->data << std::endl;
     *ppData = (void*) ((char*) allocation.block->data + (std::ptrdiff_t) allocation.offset);
+    std::cout << *ppData << std::endl;
 }
 
 void VulkanAllocator::unmapMemory(VkDevice device, Allocation allocation) {
