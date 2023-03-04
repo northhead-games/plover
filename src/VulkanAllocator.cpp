@@ -38,11 +38,15 @@ void VulkanAllocator::initializeAllocation(const AllocationCreateInfo &createInf
     allocation.offset = nextOffset;
     allocation.memoryHandle = block->memoryHandle;
     allocation.block = block;
+    allocation.next = nullptr;
+    allocation.prev = nullptr;
 }
 
 Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo) {
     Block *block = (Block*) malloc(sizeof(Block));
     block->next = nullptr;
+    block->data = nullptr;
+    block->mapCounter = 0;
     block->size = getAllocationSize(allocateInfo.memoryTypeIndex) * allocationMult;
     block->mapCounter = 0;
     allocateInfo.allocationSize = block->size;
@@ -156,9 +160,12 @@ void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **p
 }
 
 void VulkanAllocator::unmapMemory(VkDevice device, Allocation allocation) {
+    assert(allocation.block->mapCounter > 0);
+
     if (allocation.block->mapCounter == 1) {
         allocation.block->mapCounter--;
         vkUnmapMemory(device, allocation.memoryHandle);
+        allocation.block->data = nullptr;
     } else {
         allocation.block->mapCounter--;
     }
@@ -210,7 +217,6 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
 
                     alloc->next = &allocation;
                     allocation.prev = alloc;
-                    allocation.next = nullptr;
 
                     return;
                 }
@@ -221,8 +227,8 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
                     initializeAllocation(createInfo, block, nextOffset, allocation);
 
                     allocation.next = alloc->next;
+                    allocation.next->prev = &allocation;
                     allocation.prev = alloc;
-                    alloc->next->prev = &allocation;
                     alloc->next = &allocation;
 
                     return;
@@ -249,7 +255,6 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
 
     block->head->next = &allocation;
     allocation.prev = block->head;
-    allocation.next = nullptr;
 }
 
 void VulkanAllocator::free(Allocation& allocation) {
@@ -264,6 +269,10 @@ void VulkanAllocator::free(Allocation& allocation) {
 
     allocation.prev = nullptr;
     allocation.next = nullptr;
+    allocation.block = nullptr;
+    allocation.offset = 0;
+    allocation.memoryHandle = 0;
+    allocation.size = 0;
 }
 
 void VulkanAllocator::cleanup() {

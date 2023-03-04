@@ -1198,9 +1198,7 @@ void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& b
 
 	void* data;
 	allocator.mapMemory(device, stagingBufferAllocation, &data);
-    std::cout << bufferSize << std::endl;
 	memcpy(data, indices.data(), (size_t)bufferSize);
-    std::cout << "HERE" << std::endl;
 	allocator.unmapMemory(device, stagingBufferAllocation);
 
 	CreateBufferInfo indexCreateInfo{};
@@ -1567,6 +1565,7 @@ void VulkanContext::cleanup() {
         vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
         allocator.free(mesh.vertexAllocation);
         vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
+        std::cout << "INDEX BUFFER WEIRD" << std::endl;
         allocator.free(mesh.indexAllocation);
     }
 
