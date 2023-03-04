@@ -10,7 +10,6 @@ namespace Plover {
 		VkDeviceMemory memoryHandle;
 		VkDeviceSize size;
 		VkDeviceSize offset;
-        bool needsReservedBlock;
 
         Allocation* next;
         Allocation* prev;
@@ -21,7 +20,8 @@ namespace Plover {
         Allocation* head;
         VkDeviceMemory memoryHandle;
         VkDeviceSize size;
-        bool reserved;
+        uint32_t mapCounter;
+        void* data;
         Block* next;
     };
 
@@ -52,25 +52,24 @@ namespace Plover {
 
 		void init(VulkanContext* context);
 
+        //Helper functions
 		uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
         VkDeviceSize getAllocationSize(uint32_t type);
+        Block *createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo);
+        void initializeAllocation(const AllocationCreateInfo &createInfo, Block *block, int nextOffset,
+                                  Allocation &allocation);
 
         void checkAllocationError(VkResult res);
 
 		void createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, Allocation& bufferAllocation);
 		void createImage(CreateImageInfo createInfo, VkImage& buffer, Allocation& bufferAllocation);
 
-		void allocate(AllocationCreateInfo createInfo, Allocation& allocation);
+        void mapMemory(VkDevice device, Allocation allocation, void** ppData);
+        void unmapMemory(VkDevice device, Allocation allocation);
 
+		void allocate(AllocationCreateInfo createInfo, Allocation& allocation);
 		void free(Allocation& allocation);
 
         void cleanup();
-
-        Block *createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo);
-
-        void
-        initializeAllocation(const AllocationCreateInfo &createInfo, Allocation &allocation, bool needsOwnBlock,
-                             Block *block,
-                             int nextOffset) const;
     };
 }
