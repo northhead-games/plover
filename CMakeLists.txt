@@ -17,7 +17,6 @@ add_subdirectory(libraries/glm)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
-	PUBLIC ${Vulkan_INCLUDE_DIRS}
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include
 )
@@ -27,7 +26,7 @@ target_link_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME}
-	PUBLIC ${Vulkan_LIBRARIES}
+	PUBLIC Vulkan::Vulkan
 	PUBLIC glfw
 	PUBLIC glm
 )
