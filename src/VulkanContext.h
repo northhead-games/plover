@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VulkanAllocator.h"
+#include "Mesh.h"
 #include "includes.h"
 
 namespace Plover {
@@ -8,48 +9,12 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
-    const std::string MODEL_PATH = "resources/models/viking_room.obj";
     const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
 
 	struct UniformBufferObject {
 		alignas(16) glm::mat4 model;
 		alignas(16) glm::mat4 view;
 		alignas(16) glm::mat4 proj;
-	};
-
-	struct Vertex {
-		glm::vec3 pos;
-		glm::vec3 color;
-		glm::vec2 texCoord;
-
-		static VkVertexInputBindingDescription getBindingDescription() {
-			VkVertexInputBindingDescription bindingDescription{};
-			bindingDescription.binding = 0;
-			bindingDescription.stride = sizeof(Vertex);
-			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return bindingDescription;
-		}
-
-		static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-			attributeDescriptions[0].binding = 0;
-			attributeDescriptions[0].location = 0;
-			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-			attributeDescriptions[1].binding = 0;
-			attributeDescriptions[1].location = 1;
-			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-			attributeDescriptions[2].binding = 0;
-			attributeDescriptions[2].location = 2;
-			attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-			attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-			return attributeDescriptions;
-		}
 	};
 
 	struct QueueFamilyIndices {
@@ -67,23 +32,15 @@ namespace Plover {
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+    struct MeshData {
+        std::vector<VkBuffer> vertexBuffers;
+        std::vector<Allocation> vertexAllocations;
+
+        std::vector<VkBuffer> indexBuffers;
+        std::vector<Allocation> indexAllocations;
+    };
+
 	struct VulkanContext {
-		const std::vector<Vertex> vertices_ = {
-			{{ -0.5f, -0.5f,  0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{  0.5f, -0.5f,  0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{  0.5f,  0.5f,  0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-			{{ -0.5f,  0.5f,  0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-			{{ -0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{  0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{  0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-			{{ -0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-		};
-
-		const std::vector<uint16_t> indices_ = {
-				0, 1, 2, 2, 3, 0,
-				4, 5, 6, 6, 7, 4,
-		};
-
 		const std::vector<const char*> validationLayers = {
 				"VK_LAYER_KHRONOS_validation"
 		};
@@ -134,15 +91,13 @@ namespace Plover {
 		VkDescriptorPool descriptorPool;
 		std::vector<VkDescriptorSet> descriptorSets;
 
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
-		VkBuffer vertexBuffer;
-		Allocation vertexBufferAllocation;
-		VkBuffer indexBuffer;
-		Allocation indexBufferAllocation;
+        std::vector<Vertex> _vertices;
+        std::vector<uint32_t> _indices;
+
+        MeshData meshData;
 
 		std::vector<VkBuffer> uniformBuffers;
-		std::vector<Allocation> uniformBuffersAllocation;
+		std::vector<Allocation> uniformBuffersAllocations;
 		std::vector<void*> uniformBuffersMapped;
 
 		VkImage textureImage;
@@ -259,11 +214,11 @@ namespace Plover {
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        void loadModel();
+        size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 
-		void createVertexBuffer();
+		size_t createVertexBuffer(std::vector<Vertex> vertices);
 
-		void createIndexBuffer();
+		size_t createIndexBuffer(std::vector<uint32_t> indices);
 
 		void createUniformBuffers();
 
