@@ -67,5 +67,10 @@ namespace Plover {
         void cleanup();
 
         Block *createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo);
+
+        void
+        initializeAllocation(const AllocationCreateInfo &createInfo, Allocation &allocation, bool needsOwnBlock,
+                             Block *block,
+                             int nextOffset) const;
     };
 }

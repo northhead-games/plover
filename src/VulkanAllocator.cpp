@@ -98,7 +98,6 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, A
 
 void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allocation)
 {
-    static uint32_t nextId = 0;
     bool needsOwnBlock = createInfo.properties != VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     if (needsOwnBlock) {
         std::cout << "Needs own block" << std::endl;
@@ -141,34 +140,10 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
                     break;
                 }
 
-//                if (needsOwnBlock && alloc->prev == nullptr && alloc->next == nullptr) {
-//                    allocation.id = nextId++;
-//                    allocation.size = createInfo.requirements.size;
-//                    allocation.offset = nextOffset;
-//                    allocation.typeIndex = allocateInfo.memoryTypeIndex;
-//                    allocation.memoryHandle = block->memoryHandle;
-//                    allocation.block = block;
-//
-//                    alloc->next = &allocation;
-//                    allocation.prev = alloc;
-//                    allocation.next = nullptr;
-//
-//                    block->reserved = true;
-//
-//                    return;
-//                }
-
                 // If there is no allocation after the current one and there is enough space as the previous if passed.
                 if (alloc->next == nullptr) {
                     std::cout << "Adding to the end of the block" << std::endl;
-                    allocation.size = createInfo.requirements.size;
-                    allocation.offset = nextOffset;
-                    allocation.memoryHandle = block->memoryHandle;
-                    allocation.block = block;
-                    allocation.needsReservedBlock = needsOwnBlock;
-                    if (allocation.needsReservedBlock) {
-                        block->reserved = true;
-                    }
+                    initializeAllocation(createInfo, allocation, needsOwnBlock, block, nextOffset);
 
                     alloc->next = &allocation;
                     allocation.prev = alloc;
@@ -180,14 +155,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
                 // If there is enough space after an existing allocation place it there.
                 if (alloc->next->offset - nextOffset >= createInfo.requirements.size) {
                     std::cout << "Putting in the middle of two allocations" << std::endl;
-                    allocation.size = createInfo.requirements.size;
-                    allocation.offset = nextOffset;
-                    allocation.memoryHandle = block->memoryHandle;
-                    allocation.block = block;
-                    allocation.needsReservedBlock = needsOwnBlock;
-                    if (allocation.needsReservedBlock) {
-                        block->reserved = true;
-                    }
+                    initializeAllocation(createInfo, allocation, needsOwnBlock, block, nextOffset);
 
                     allocation.next = alloc->next;
                     allocation.prev = alloc;
@@ -214,17 +182,22 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
     blocks[allocateInfo.memoryTypeIndex] = block;
 
     block->head->next = &allocation;
+    initializeAllocation(createInfo, allocation, needsOwnBlock, block, 0);
+
+    allocation.prev = block->head;
+    allocation.next = nullptr;
+}
+
+void VulkanAllocator::initializeAllocation(const AllocationCreateInfo &createInfo, Allocation &allocation,
+                                           bool needsOwnBlock, Block *block, int nextOffset) const {
     allocation.size = createInfo.requirements.size;
-    allocation.offset = 0;
+    allocation.offset = nextOffset;
     allocation.memoryHandle = block->memoryHandle;
     allocation.block = block;
     allocation.needsReservedBlock = needsOwnBlock;
     if (allocation.needsReservedBlock) {
         block->reserved = true;
     }
-
-    allocation.prev = block->head;
-    allocation.next = nullptr;
 }
 
 Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo) {
