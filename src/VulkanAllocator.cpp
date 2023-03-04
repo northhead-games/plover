@@ -32,6 +32,45 @@ VkDeviceSize VulkanAllocator::getAllocationSize(uint32_t type) {
     return std::min((uint64_t) (256 * 1024 * 1024), ((uint64_t) deviceMemoryProperties.memoryHeaps[deviceMemoryProperties.memoryTypes[type].heapIndex].size) / 8);
 }
 
+void VulkanAllocator::initializeAllocation(const AllocationCreateInfo &createInfo, Block *block, int nextOffset,
+                                           Allocation &allocation) {
+    allocation.size = createInfo.requirements.size;
+    allocation.offset = nextOffset;
+    allocation.memoryHandle = block->memoryHandle;
+    allocation.block = block;
+}
+
+Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo) {
+    Block *block = (Block*) malloc(sizeof(Block));
+    block->next = nullptr;
+    block->size = getAllocationSize(allocateInfo.memoryTypeIndex) * allocationMult;
+    allocateInfo.allocationSize = block->size;
+
+    Allocation* sentinel = (Allocation*) malloc(sizeof(Allocation));
+    sentinel->offset = 0;
+    sentinel->size = 0;
+    sentinel->prev = nullptr;
+    sentinel->next = nullptr;
+
+    block->head = sentinel;
+    VkResult res = vkAllocateMemory(context->device, &allocateInfo, nullptr, &block->memoryHandle);
+    checkAllocationError(res);
+
+    return block;
+}
+
+void VulkanAllocator::checkAllocationError(VkResult res) {
+    if (res == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+        throw std::runtime_error("failed to allocate gpu memory, out of device memory!");
+    }
+    if (res == VK_ERROR_TOO_MANY_OBJECTS) {
+        throw std::runtime_error("failed to allocate gpu memory, too many allocations!");
+    }
+    if (res != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate gpu memory!");
+    }
+}
+
 void VulkanAllocator::createBuffer(CreateBufferInfo createInfo,
 	VkBuffer& buffer,
 	Allocation& bufferAllocation) {
@@ -53,7 +92,7 @@ void VulkanAllocator::createBuffer(CreateBufferInfo createInfo,
 	allocateInfo.properties = createInfo.properties;
 	allocate(allocateInfo, bufferAllocation);
 
-    std::cout << "ALLOC" << std::endl;
+    std::cout << "ALLOC BUFFER" << std::endl;
     std::cout << "Handle: " << bufferAllocation.memoryHandle << std::endl;
     std::cout << "Buffer Size: " << bufferAllocation.size << std::endl;
     std::cout << "Buffer Offset: " << bufferAllocation.offset << std::endl << std::endl;
@@ -92,7 +131,7 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, A
 
 	allocate(allocateInfo, imageAllocation);
 
-    std::cout << "ALLOC" << std::endl;
+    std::cout << "ALLOC IMAGE" << std::endl;
     std::cout << "Handle: " << imageAllocation.memoryHandle << std::endl;
     std::cout << "Buffer Size: " << imageAllocation.size << std::endl;
     std::cout << "Buffer Offset: " << imageAllocation.offset << std::endl << std::endl;
@@ -100,13 +139,29 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, A
 	vkBindImageMemory(context->device, image, imageAllocation.memoryHandle, imageAllocation.offset);
 }
 
+void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **ppData) {
+    if (allocation.block->mapCounter != 0) {
+        allocation.block->mapCounter++;
+    } else {
+        allocation.block->mapCounter++;
+        void *data;
+        vkMapMemory(device, allocation.memoryHandle, 0, VK_WHOLE_SIZE, 0, &data);
+        allocation.block->data = data;
+    }
+    *ppData = (void*) ((char*) allocation.block->data + (std::ptrdiff_t) allocation.offset);
+}
+
+void VulkanAllocator::unmapMemory(VkDevice device, Allocation allocation) {
+    if (allocation.block->mapCounter == 1) {
+        allocation.block->mapCounter--;
+        vkUnmapMemory(device, allocation.memoryHandle);
+    } else {
+        allocation.block->mapCounter--;
+    }
+}
+
 void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allocation)
 {
-    bool needsOwnBlock = createInfo.properties != VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    if (needsOwnBlock) {
-        std::cout << "Needs own block" << std::endl;
-    }
-
     VkMemoryAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.memoryTypeIndex = findMemoryType(createInfo.requirements.memoryTypeBits, createInfo.properties);
@@ -127,7 +182,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
         Block *block = blocks[allocateInfo.memoryTypeIndex];
         do {
             // If the block is not large enough for the allocation.
-            if (block->size < createInfo.requirements.size || (block->reserved && needsOwnBlock)) {
+            if (block->size < createInfo.requirements.size) {
                 block = block->next;
                 continue;
             }
@@ -147,7 +202,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
                 // If there is no allocation after the current one and there is enough space as the previous if passed.
                 if (alloc->next == nullptr) {
                     std::cout << "Adding to the end of the block" << std::endl;
-                    initializeAllocation(createInfo, allocation, needsOwnBlock, block, nextOffset);
+                    initializeAllocation(createInfo, block, nextOffset, allocation);
 
                     alloc->next = &allocation;
                     allocation.prev = alloc;
@@ -159,7 +214,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
                 // If there is enough space after an existing allocation place it there.
                 if (alloc->next->offset - nextOffset >= createInfo.requirements.size) {
                     std::cout << "Putting in the middle of two allocations" << std::endl;
-                    initializeAllocation(createInfo, allocation, needsOwnBlock, block, nextOffset);
+                    initializeAllocation(createInfo, block, nextOffset, allocation);
 
                     allocation.next = alloc->next;
                     allocation.prev = alloc;
@@ -186,56 +241,11 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
     block->next = blocks[allocateInfo.memoryTypeIndex];
     blocks[allocateInfo.memoryTypeIndex] = block;
 
-    initializeAllocation(createInfo, allocation, needsOwnBlock, block, 0);
+    initializeAllocation(createInfo, block, 0, allocation);
 
     block->head->next = &allocation;
     allocation.prev = block->head;
     allocation.next = nullptr;
-}
-
-void VulkanAllocator::initializeAllocation(const AllocationCreateInfo &createInfo, Allocation &allocation,
-                                           bool needsOwnBlock, Block *block, int nextOffset) const {
-    allocation.size = createInfo.requirements.size;
-    allocation.offset = nextOffset;
-    allocation.memoryHandle = block->memoryHandle;
-    allocation.block = block;
-    allocation.needsReservedBlock = needsOwnBlock;
-    if (allocation.needsReservedBlock) {
-        block->reserved = true;
-    }
-}
-
-Block *VulkanAllocator::createMemoryBlock(int allocationMult, VkMemoryAllocateInfo &allocateInfo) {
-    Block *block = (Block*) malloc(sizeof(Block));
-    block->next = nullptr;
-    block->size = getAllocationSize(allocateInfo.memoryTypeIndex) * allocationMult;
-    block->reserved = false;
-    allocateInfo.allocationSize = block->size;
-
-    Allocation* sentinel = (Allocation*) malloc(sizeof(Allocation));
-    sentinel->offset = 0;
-    sentinel->size = 0;
-    sentinel->prev = nullptr;
-    sentinel->next = nullptr;
-    sentinel->block = block;
-
-    block->head = sentinel;
-    VkResult res = vkAllocateMemory(context->device, &allocateInfo, nullptr, &block->memoryHandle);
-    checkAllocationError(res);
-
-    return block;
-}
-
-void VulkanAllocator::checkAllocationError(VkResult res) {
-    if (res == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
-        throw std::runtime_error("failed to allocate gpu memory, out of device memory!");
-    }
-    if (res == VK_ERROR_TOO_MANY_OBJECTS) {
-        throw std::runtime_error("failed to allocate gpu memory, too many allocations!");
-    }
-    if (res != VK_SUCCESS) {
-        throw std::runtime_error("failed to allocate gpu memory!");
-    }
 }
 
 void VulkanAllocator::free(Allocation& allocation) {
@@ -248,10 +258,6 @@ void VulkanAllocator::free(Allocation& allocation) {
         allocation.next->prev = allocation.prev;
     }
 
-    if (allocation.needsReservedBlock) {
-        std::cout << "Freeing the allocation that needs a reserved block" << std::endl << std::endl;
-        allocation.block->reserved = false;
-    }
     allocation.prev = nullptr;
     allocation.next = nullptr;
 }

@@ -976,9 +976,9 @@ void VulkanContext::createTextureImage() {
 	allocator.createBuffer(stagingCreateBuffer, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	vkMapMemory(device, stagingBufferAllocation.memoryHandle, stagingBufferAllocation.offset, stagingBufferAllocation.size, 0, &data);
+	allocator.mapMemory(device, stagingBufferAllocation, &data);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
-	vkUnmapMemory(device, stagingBufferAllocation.memoryHandle);
+	allocator.unmapMemory(device, stagingBufferAllocation);
 
 	stbi_image_free(pixels);
 
@@ -1155,9 +1155,9 @@ void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& b
 	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	vkMapMemory(device, stagingBufferAllocation.memoryHandle, stagingBufferAllocation.offset, stagingBufferAllocation.size, 0, &data);
+	allocator.mapMemory(device, stagingBufferAllocation, &data);
 	memcpy(data, vertices.data(), (size_t)bufferSize);
-	vkUnmapMemory(device, stagingBufferAllocation.memoryHandle);
+	allocator.unmapMemory(device, stagingBufferAllocation);
 
 	CreateBufferInfo vertexCreateInfo{};
 	vertexCreateInfo.size = bufferSize;
@@ -1185,9 +1185,11 @@ void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& b
 	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	vkMapMemory(device, stagingBufferAllocation.memoryHandle, stagingBufferAllocation.offset, stagingBufferAllocation.size, 0, &data);
+	allocator.mapMemory(device, stagingBufferAllocation, &data);
+    std::cout << bufferSize << std::endl;
 	memcpy(data, indices.data(), (size_t)bufferSize);
-	vkUnmapMemory(device, stagingBufferAllocation.memoryHandle);
+    std::cout << "HERE" << std::endl;
+	allocator.unmapMemory(device, stagingBufferAllocation);
 
 	CreateBufferInfo indexCreateInfo{};
 	indexCreateInfo.size = bufferSize;
@@ -1216,11 +1218,8 @@ void VulkanContext::createUniformBuffers() {
 
 		// Persistent mapping
 		allocator.createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocations[i]);
-		vkMapMemory(device,
-			uniformBuffersAllocations[i].memoryHandle,
-			uniformBuffersAllocations[i].offset,
-			uniformBuffersAllocations[i].size,
-			0,
+		allocator.mapMemory(device,
+			uniformBuffersAllocations[i],
 			&uniformBuffersMapped[i]);
 	}
 }
