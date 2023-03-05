@@ -4,7 +4,7 @@
 #include "includes.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
+#include <obj/tiny_obj_loader.h>
 
 using namespace Plover;
 

@@ -187,7 +187,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
     VkMemoryAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.memoryTypeIndex = findMemoryType(createInfo.requirements.memoryTypeBits, createInfo.properties);
-    printBlockList(blocks[allocateInfo.memoryTypeIndex]);
+    // printBlockList(blocks[allocateInfo.memoryTypeIndex]);
 
     if (blocks[allocateInfo.memoryTypeIndex] == nullptr) {
         int allocationMult = 1;

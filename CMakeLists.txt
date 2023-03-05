@@ -14,11 +14,13 @@ add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanConte
 
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
+add_subdirectory(libraries/header_libs)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include
+	PUBLIC libraries/header_libs/include
 )
 
 target_link_directories(${PROJECT_NAME}
