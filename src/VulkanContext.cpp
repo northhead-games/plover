@@ -20,6 +20,7 @@ void VulkanContext::initWindow() {
 }
 
 void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    std::cout << "--- RESIZE CB ---" << std::endl;
 	auto app = reinterpret_cast<VulkanContext*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
 }
@@ -1513,6 +1514,7 @@ void VulkanContext::drawFrame() {
 	result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+        std::cout << "--- RESIZE KHR ---" << std::endl;
 		framebufferResized = false;
 		recreateSwapChain();
 	}

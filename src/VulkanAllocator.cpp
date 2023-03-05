@@ -145,7 +145,6 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, A
 }
 
 void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **ppData) {
-    std::cout << allocation.block->mapCounter << std::endl;
     if (allocation.block->mapCounter != 0) {
         allocation.block->mapCounter++;
     } else {
@@ -154,9 +153,7 @@ void VulkanAllocator::mapMemory(VkDevice device, Allocation allocation, void **p
         vkMapMemory(device, allocation.memoryHandle, 0, VK_WHOLE_SIZE, 0, &data);
         allocation.block->data = data;
     }
-    std::cout << allocation.block->data << std::endl;
     *ppData = (void*) ((char*) allocation.block->data + (std::ptrdiff_t) allocation.offset);
-    std::cout << *ppData << std::endl;
 }
 
 void VulkanAllocator::unmapMemory(VkDevice device, Allocation allocation) {
@@ -171,11 +168,26 @@ void VulkanAllocator::unmapMemory(VkDevice device, Allocation allocation) {
     }
 }
 
+void printBlockList(Block *head) {
+    Block *current = head;
+    while (current != nullptr) {
+        std::cout << "BLOCK{ size: " << current->size << " }" << std::endl;
+        Allocation *ca = current->head;
+        while (ca != nullptr) {
+            std::cout << "ALLOC{ offset: " << ca->offset << ", size: " << ca->size << ", end: " << ca->offset + ca->size << "} -> ";
+            ca = ca->next;
+        }
+        std::cout << std::endl;
+        current = current->next;
+    }
+}
+
 void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allocation)
 {
     VkMemoryAllocateInfo allocateInfo{};
     allocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocateInfo.memoryTypeIndex = findMemoryType(createInfo.requirements.memoryTypeBits, createInfo.properties);
+    printBlockList(blocks[allocateInfo.memoryTypeIndex]);
 
     if (blocks[allocateInfo.memoryTypeIndex] == nullptr) {
         int allocationMult = 1;
@@ -260,7 +272,7 @@ void VulkanAllocator::allocate(AllocationCreateInfo createInfo, Allocation& allo
 void VulkanAllocator::free(Allocation& allocation) {
     std::cout << "FREE" << std::endl;
     std::cout << "Handle: " << allocation.memoryHandle << std::endl;
-    std::cout << "Buffer Offset: " << allocation.offset << std::endl;
+    std::cout << "Buffer Offset: " << allocation.offset << std::endl << std::endl;
 
     allocation.prev->next = allocation.next;
     if (allocation.next != nullptr) {
