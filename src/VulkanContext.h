@@ -84,16 +84,16 @@ namespace Plover {
         std::unordered_map<size_t, Material> materials;
 
 		std::vector<VkBuffer> uniformBuffers;
-		std::vector<Allocation> uniformBuffersAllocations;
+		std::vector<VmaAllocation> uniformBuffersAllocations;
 		std::vector<void*> uniformBuffersMapped;
 
 		VkImage textureImage;
-		Allocation textureAllocation;
+		VmaAllocation textureAllocation;
 		VkImageView textureImageView;
 		VkSampler textureSampler;
 
 		VkImage depthImage;
-		Allocation depthImageAllocation;
+		VmaAllocation depthImageAllocation;
 		VkImageView depthImageView;
 
 		std::vector<VkCommandBuffer> commandBuffers;
@@ -205,9 +205,9 @@ namespace Plover {
 
         size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId);
 
-		void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, Allocation& allocation);
+		void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation);
 
-		void createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, Allocation& allocation);
+		void createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, VmaAllocation& allocation);
 
 		void createUniformBuffers();
 

@@ -11,6 +11,8 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <vma/vk_mem_alloc.h>
+
 #include <chrono>
 #include <unordered_map>
 #include <iostream>

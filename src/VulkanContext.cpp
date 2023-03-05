@@ -20,7 +20,6 @@ void VulkanContext::initWindow() {
 }
 
 void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    std::cout << "--- RESIZE CB ---" << std::endl;
 	auto app = reinterpret_cast<VulkanContext*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
 }
@@ -393,7 +392,12 @@ void VulkanContext::createLogicalDevice() {
 
 void VulkanContext::initAllocator()
 {
-	allocator.init(this);
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.physicalDevice = physicalDevice;
+    allocatorInfo.device = device;
+    allocatorInfo.instance = instance;
+
+    allocator.init(this, allocatorInfo);
 }
 
 void VulkanContext::createSurface() {
@@ -980,18 +984,20 @@ void VulkanContext::createTextureImage() {
 	}
 
 	VkBuffer stagingBuffer;
-	Allocation stagingBufferAllocation;
+	VmaAllocation stagingBufferAllocation;
 
-	CreateBufferInfo stagingCreateBuffer{};
-	stagingCreateBuffer.size = imageSize;
-	stagingCreateBuffer.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	stagingCreateBuffer.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	allocator.createBuffer(stagingCreateBuffer, stagingBuffer, stagingBufferAllocation);
+	CreateBufferInfo stagingCreateInfo{};
+    stagingCreateInfo.size = imageSize;
+    stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+
+	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	allocator.mapMemory(device, stagingBufferAllocation, &data);
+	allocator.mapMemory(stagingBufferAllocation, &data);
 	memcpy(data, pixels, static_cast<size_t>(imageSize));
-	allocator.unmapMemory(device, stagingBufferAllocation);
+	allocator.unmapMemory(stagingBufferAllocation);
 
 	stbi_image_free(pixels);
 
@@ -1002,6 +1008,7 @@ void VulkanContext::createTextureImage() {
 	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	createInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
 	allocator.createImage(createInfo, textureImage, textureAllocation);
 
 	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
@@ -1009,8 +1016,7 @@ void VulkanContext::createTextureImage() {
 	copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	allocator.free(stagingBufferAllocation);
+    allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 }
 
 void VulkanContext::createTextureImageView() {
@@ -1087,6 +1093,7 @@ void VulkanContext::createDepthResources() {
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	imageInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    imageInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
 
 	allocator.createImage(imageInfo, depthImage, depthImageAllocation);
 	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -1155,7 +1162,7 @@ size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t
     return id;
 }
 
-void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, Allocation& allocation)
+void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation)
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -1163,28 +1170,29 @@ void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& b
 	stagingCreateInfo.size = bufferSize;
 	stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
 	VkBuffer stagingBuffer;
-	Allocation stagingBufferAllocation;
+	VmaAllocation stagingBufferAllocation;
 	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	allocator.mapMemory(device, stagingBufferAllocation, &data);
+	allocator.mapMemory(stagingBufferAllocation, &data);
 	memcpy(data, vertices.data(), (size_t)bufferSize);
-	allocator.unmapMemory(device, stagingBufferAllocation);
+	allocator.unmapMemory(stagingBufferAllocation);
 
 	CreateBufferInfo vertexCreateInfo{};
 	vertexCreateInfo.size = bufferSize;
 	vertexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    vertexCreateInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
 	allocator.createBuffer(vertexCreateInfo, buffer, allocation);
 
 	copyBuffer(stagingBuffer, buffer, bufferSize);
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	allocator.free(stagingBufferAllocation);
+    allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 }
 
-void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, Allocation& allocation)
+void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, VmaAllocation& allocation)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -1192,26 +1200,27 @@ void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& b
 	stagingCreateInfo.size = bufferSize;
 	stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 
 	VkBuffer stagingBuffer;
-	Allocation stagingBufferAllocation;
+	VmaAllocation stagingBufferAllocation;
 	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
 
 	void* data;
-	allocator.mapMemory(device, stagingBufferAllocation, &data);
+	allocator.mapMemory(stagingBufferAllocation, &data);
 	memcpy(data, indices.data(), (size_t)bufferSize);
-	allocator.unmapMemory(device, stagingBufferAllocation);
+	allocator.unmapMemory(stagingBufferAllocation);
 
 	CreateBufferInfo indexCreateInfo{};
 	indexCreateInfo.size = bufferSize;
 	indexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    indexCreateInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
 	allocator.createBuffer(indexCreateInfo, buffer, allocation);
 
 	copyBuffer(stagingBuffer, buffer, bufferSize);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	allocator.free(stagingBufferAllocation);
+    allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 }
 
 void VulkanContext::createUniformBuffers() {
@@ -1226,12 +1235,14 @@ void VulkanContext::createUniformBuffers() {
 		createInfo.size = bufferSize;
 		createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		createInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(
+                VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
 
-		// Persistent mapping
+		//TODO Fix Persistent mapping
+        VmaAllocationInfo allocInfo = {};
 		allocator.createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocations[i]);
-		allocator.mapMemory(device,
-			uniformBuffersAllocations[i],
-			&uniformBuffersMapped[i]);
+        allocator.getAllocationInfo(uniformBuffersAllocations[i], allocInfo);
+        uniformBuffersMapped[i] = allocInfo.pMappedData;
 	}
 }
 
@@ -1514,7 +1525,6 @@ void VulkanContext::drawFrame() {
 	result = vkQueuePresentKHR(presentQueue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-        std::cout << "--- RESIZE KHR ---" << std::endl;
 		framebufferResized = false;
 		recreateSwapChain();
 	}
@@ -1536,8 +1546,7 @@ void VulkanContext::mainLoop() {
 
 void VulkanContext::cleanupSwapChain() {
 	vkDestroyImageView(device, depthImageView, nullptr);
-	vkDestroyImage(device, depthImage, nullptr);
-	allocator.free(depthImageAllocation);
+    allocator.destroyImage(depthImage, depthImageAllocation);
 
 	for (VkFramebuffer framebuffer : swapChainFramebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -1556,18 +1565,15 @@ void VulkanContext::cleanup() {
 	vkDestroySampler(device, textureSampler, nullptr);
 	vkDestroyImageView(device, textureImageView, nullptr);
 
-	vkDestroyImage(device, textureImage, nullptr);
-	allocator.free(textureAllocation);
+    allocator.destroyImage(textureImage, textureAllocation);
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
     for (auto kv : meshes) {
         Mesh mesh = kv.second;
-        vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
-        allocator.free(mesh.vertexAllocation);
-        vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
-        allocator.free(mesh.indexAllocation);
+        allocator.destroyBuffer(mesh.vertexBuffer, mesh.vertexAllocation);
+        allocator.destroyBuffer(mesh.indexBuffer, mesh.indexAllocation);
     }
 
     for (auto kv : materials) {
@@ -1577,8 +1583,7 @@ void VulkanContext::cleanup() {
     }
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-		allocator.free(uniformBuffersAllocations[i]);
+        allocator.destroyBuffer(uniformBuffers[i], uniformBuffersAllocations[i]);
 	}
 
 	vkDestroyRenderPass(device, renderPass, nullptr);

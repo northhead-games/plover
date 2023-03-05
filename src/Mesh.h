@@ -51,10 +51,10 @@ namespace Plover {
         std::vector<uint32_t> indices;
 
         VkBuffer vertexBuffer;
-        Allocation vertexAllocation;
+        VmaAllocation vertexAllocation;
 
         VkBuffer indexBuffer;
-        Allocation indexAllocation;
+        VmaAllocation indexAllocation;
 
         size_t materialId;
     };
