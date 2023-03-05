@@ -39,7 +39,7 @@ namespace Plover {
 
             attributeDescriptions[2].binding = 0;
             attributeDescriptions[2].location = 2;
-            attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
             attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 
             return attributeDescriptions;
