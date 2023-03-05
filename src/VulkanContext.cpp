@@ -1567,7 +1567,6 @@ void VulkanContext::cleanup() {
         vkDestroyBuffer(device, mesh.vertexBuffer, nullptr);
         allocator.free(mesh.vertexAllocation);
         vkDestroyBuffer(device, mesh.indexBuffer, nullptr);
-        std::cout << "INDEX BUFFER WEIRD" << std::endl;
         allocator.free(mesh.indexAllocation);
     }
 
