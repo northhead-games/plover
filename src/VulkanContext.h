@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VulkanAllocator.h"
+#include "DescriptorAllocator.h"
 #include "Mesh.h"
 #include "includes.h"
 
@@ -9,12 +10,10 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
-    const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
+	const std::string TEXTURE_PATH = "resources/textures/beans.jpg";
 
-	struct UniformBufferObject {
-		alignas(16) glm::mat4 model;
-		alignas(16) glm::mat4 view;
-		alignas(16) glm::mat4 proj;
+	struct CameraUniformBufferObject {
+		alignas(16) glm::mat4 camera;
 	};
 
 	struct QueueFamilyIndices {
@@ -57,6 +56,7 @@ namespace Plover {
 		VkDevice device;
 
 		VulkanAllocator allocator;
+		DescriptorAllocator descriptorAllocator;
 
 		VkQueue graphicsQueue;
 		VkQueue presentQueue;
@@ -72,16 +72,16 @@ namespace Plover {
 
 		VkRenderPass renderPass;
 
-		VkDescriptorSetLayout descriptorSetLayout;
-
 		VkCommandPool drawCommandPool;
 		VkCommandPool transientCommandPool;
 
-		VkDescriptorPool descriptorPool;
-		std::vector<VkDescriptorSet> descriptorSets;
+		VkDescriptorSetLayout globalDescriptorSetLayout;
+		VkDescriptorSetLayout meshDescriptorSetLayout;
 
-        std::unordered_map<size_t, Mesh> meshes;
-        std::unordered_map<size_t, Material> materials;
+		std::vector<VkDescriptorSet> globalDescriptorSets;
+
+		std::unordered_map<size_t, Mesh*> meshes;
+		std::unordered_map<size_t, Material> materials;
 
 		std::vector<VkBuffer> uniformBuffers;
 		std::vector<VmaAllocation> uniformBuffersAllocations;
@@ -167,13 +167,15 @@ namespace Plover {
 
 		void createRenderPass();
 
-		void createDescriptorSetLayout();
+		void createGlobalDescriptorSetLayout();
+
+		void createMeshDescriptorSetLayout();
 
 		VkShaderModule createShaderModule(const std::vector<char>& code);
 
 		void createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayout& pipelineLayout);
 
-        size_t createMaterial();
+		size_t createMaterial();
 
 		void createFramebuffers();
 
@@ -203,17 +205,19 @@ namespace Plover {
 
 		void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
-        size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId);
-
 		void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation);
 
 		void createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, VmaAllocation& allocation);
 
 		void createUniformBuffers();
 
-		void createDescriptorPool();
+		void createDescriptorAllocator();
 
-		void createDescriptorSets();
+		void createGlobalDescriptorSets();
+
+		void createMeshUniform(Mesh& mesh);
+
+		size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId);
 
 		void createCommandBuffer();
 
