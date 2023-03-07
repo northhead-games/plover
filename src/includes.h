@@ -11,7 +11,10 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullability-completeness"
 #include <vma/vk_mem_alloc.h>
+#pragma clang diagnostic pop
 
 #include <chrono>
 #include <unordered_map>

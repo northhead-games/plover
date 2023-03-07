@@ -12,6 +12,11 @@ message(STATUS ${PROJECT_NAME})
 
 add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp" src/Mesh.h "src/DescriptorAllocator.h" "src/DescriptorAllocator.cpp" "src/Mesh.cpp")
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+	target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+	target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
 add_subdirectory(libraries/header_libs)

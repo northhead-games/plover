@@ -10,7 +10,7 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
-	const std::string TEXTURE_PATH = "resources/textures/beans.jpg";
+	const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
 
 	struct CameraUniformBufferObject {
 		alignas(16) glm::mat4 camera;
@@ -125,7 +125,7 @@ namespace Plover {
 
 		void initVulkan();
 
-		void mainLoop();
+		bool render();
 
 		void cleanup();
 

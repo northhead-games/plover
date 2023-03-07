@@ -1,6 +1,5 @@
 #include "VulkanContext.h"
 #include "VulkanAllocator.h"
-#include "DescriptorAllocator.h"
 
 #include "includes.h"
 
@@ -1214,6 +1213,7 @@ void VulkanContext::createMeshUniform(Mesh& mesh) {
 
 size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
 	Mesh* mesh = new Mesh;
+
 	static size_t nextId = 0;
 
 	mesh->vertices = vertices;
@@ -1584,13 +1584,15 @@ void VulkanContext::drawFrame() {
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void VulkanContext::mainLoop() {
-	while (!glfwWindowShouldClose(window)) {
+bool VulkanContext::render() {
+	if (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		drawFrame();
-	}
-
-	vkDeviceWaitIdle(device);
+        return true;
+	} else {
+        vkDeviceWaitIdle(device);
+        return false;
+    }
 }
 
 void VulkanContext::cleanupSwapChain() {
@@ -1629,7 +1631,7 @@ void VulkanContext::cleanup() {
 			allocator.destroyBuffer(mesh->uniformBuffers[i], mesh->uniformBufferAllocations[i]);
 		}
 
-		free(mesh);
+		delete mesh;
 	}
 
 	for (const auto& kv : materials) {
