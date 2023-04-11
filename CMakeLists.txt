@@ -6,16 +6,16 @@ project("plover")
 
 include(GNUInstallDirs)
 
-set(ENV{VULKAN_SDK} $ENV{VULKAN_SDK_PATH})
+set(Vulkan_LIBRARY $ENV{Vulkan_LIBRARY})
 find_package(Vulkan REQUIRED)
 message(STATUS ${PROJECT_NAME})
 
-add_library(${PROJECT_NAME} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp" src/Mesh.h "src/DescriptorAllocator.h" "src/DescriptorAllocator.cpp" "src/Mesh.cpp")
+if (WIN32)
+	set(WIN32_MAIN WIN32)
+	set(MAIN_FILE "src/win32_plover.cpp")
+endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-	target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-	target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+add_executable(${PROJECT_NAME} ${WIN32_MAIN} ${MAIN_FILE} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp" src/Mesh.h "src/DescriptorAllocator.h" "src/DescriptorAllocator.cpp" "src/Mesh.cpp" "include/plover/plover.h")
 
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
@@ -37,8 +37,3 @@ target_link_libraries(${PROJECT_NAME}
 	PUBLIC glfw
 	PUBLIC glm
 )
-
-install(TARGETS ${PROJECT_NAME}
-		EXPORT ${PROJECT_NAME}Targets
-		INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-		LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")

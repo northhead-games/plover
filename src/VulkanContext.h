@@ -1,6 +1,10 @@
 #pragma once
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullability-completeness"
 #include "VulkanAllocator.h"
+#pragma clang diagnostic pop
+
 #include "DescriptorAllocator.h"
 #include "Mesh.h"
 #include "includes.h"
@@ -10,7 +14,7 @@ namespace Plover {
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 
-	const std::string TEXTURE_PATH = "resources/textures/viking_room.png";
+	const std::string TEXTURE_PATH = "../resources/textures/viking_room.png";
 
 	struct CameraUniformBufferObject {
 		alignas(16) glm::mat4 camera;

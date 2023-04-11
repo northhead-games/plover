@@ -859,7 +859,7 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 
 size_t VulkanContext::createMaterial() {
 	static size_t nextId = 0;
-	Material material;
+	Material material{};
 
 	createGraphicsPipeline(material.pipeline, material.pipelineLayout);
 	size_t id = nextId;
@@ -1005,6 +1005,7 @@ void VulkanContext::createTextureImage() {
 
 	VkBuffer stagingBuffer;
 	VmaAllocation stagingBufferAllocation;
+
 
 	CreateBufferInfo stagingCreateInfo{};
 	stagingCreateInfo.size = imageSize;
@@ -1588,11 +1589,12 @@ bool VulkanContext::render() {
 	if (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		drawFrame();
-        return true;
-	} else {
-        vkDeviceWaitIdle(device);
-        return false;
-    }
+		return true;
+	}
+	else {
+		vkDeviceWaitIdle(device);
+		return false;
+	}
 }
 
 void VulkanContext::cleanupSwapChain() {

@@ -35,12 +35,10 @@ namespace Plover {
 
 		void init();
 		bool render();
-        void cleanup();
+		void cleanup();
 		MaterialID createMaterial();
 		MeshID loadModel(const std::string name, MaterialID materialId);
 
 		void setMeshTransform(MeshID mesh, Transform transform);
-        void rotateMesh(MeshID meshId, Transform::Rotation rotation);
-        void scaleMesh(MeshID meshId, Transform::Scale scale);
 	};
 }

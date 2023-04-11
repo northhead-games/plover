@@ -9,30 +9,31 @@
 
 using namespace Plover;
 
-void VulkanAllocator::init(VulkanContext* context, VmaAllocatorCreateInfo &allocatorInfo) {
+//TODO(oliver): move this into VulkanContext.cpp
+void VulkanAllocator::init(VulkanContext* context, VmaAllocatorCreateInfo& allocatorInfo) {
 	this->context = context;
 	vkGetPhysicalDeviceMemoryProperties(context->physicalDevice, &deviceMemoryProperties);
 
-    vmaCreateAllocator(&allocatorInfo, &_allocator);
+	vmaCreateAllocator(&allocatorInfo, &_allocator);
 }
 
 void VulkanAllocator::createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, VmaAllocation& bufferAllocation) {
-	VkBufferCreateInfo bufferInfo{};
-	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	bufferInfo.size = createInfo.size;
-	bufferInfo.usage = createInfo.usage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = createInfo.size;
+  bufferInfo.usage = createInfo.usage;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo allocCreateInfo = {};
-    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocCreateInfo.requiredFlags = createInfo.properties;
-    allocCreateInfo.flags = createInfo.vmaFlags;
+  VmaAllocationCreateInfo allocCreateInfo = {};
+  allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+  allocCreateInfo.requiredFlags = createInfo.properties;
+  allocCreateInfo.flags = createInfo.vmaFlags;
 
-    vmaCreateBuffer(_allocator, &bufferInfo, &allocCreateInfo, &buffer, &bufferAllocation, nullptr);
+  vmaCreateBuffer(_allocator, &bufferInfo, &allocCreateInfo, &buffer, &bufferAllocation, nullptr);
 }
 
 void VulkanAllocator::destroyBuffer(VkBuffer buffer, VmaAllocation allocation) {
-    vmaDestroyBuffer(_allocator, buffer, allocation);
+	vmaDestroyBuffer(_allocator, buffer, allocation);
 }
 
 void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, VmaAllocation& imageAllocation)
@@ -53,33 +54,33 @@ void VulkanAllocator::createImage(CreateImageInfo createImage, VkImage& image, V
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    VmaAllocationCreateInfo allocCreateInfo = {};
-    allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
-    allocCreateInfo.requiredFlags = createImage.properties;
-    allocCreateInfo.flags = createImage.vmaFlags;
+	VmaAllocationCreateInfo allocCreateInfo = {};
+	allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	allocCreateInfo.requiredFlags = createImage.properties;
+	allocCreateInfo.flags = createImage.vmaFlags;
 
-    vmaCreateImage(_allocator, &imageInfo, &allocCreateInfo, &image, &imageAllocation, nullptr);
+	vmaCreateImage(_allocator, &imageInfo, &allocCreateInfo, &image, &imageAllocation, nullptr);
 }
 
 void VulkanAllocator::destroyImage(VkImage image, VmaAllocation allocation) {
-    vmaDestroyImage(_allocator, image, allocation);
+	vmaDestroyImage(_allocator, image, allocation);
 }
 
 
-void VulkanAllocator::mapMemory(VmaAllocation allocation, void **ppData) {
-    void* data;
-    vmaMapMemory(_allocator, allocation, &data);
-    *ppData = data;
+void VulkanAllocator::mapMemory(VmaAllocation allocation, void** ppData) {
+	void* data;
+	vmaMapMemory(_allocator, allocation, &data);
+	*ppData = data;
 };
 
 void VulkanAllocator::unmapMemory(VmaAllocation allocation) {
-    vmaUnmapMemory(_allocator, allocation);
+	vmaUnmapMemory(_allocator, allocation);
 };
 
-void VulkanAllocator::getAllocationInfo(VmaAllocation allocation, VmaAllocationInfo &allocInfo) {
-    vmaGetAllocationInfo(_allocator, allocation, &allocInfo);
+void VulkanAllocator::getAllocationInfo(VmaAllocation allocation, VmaAllocationInfo& allocInfo) {
+	vmaGetAllocationInfo(_allocator, allocation, &allocInfo);
 }
 
 void VulkanAllocator::cleanup() {
-    vmaDestroyAllocator(_allocator);
+	vmaDestroyAllocator(_allocator);
 }

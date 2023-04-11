@@ -15,12 +15,12 @@ void Renderer::init() {
 }
 
 bool Renderer::render() {
-	return context->render();
+  return context->render();
 }
 
 void Renderer::cleanup() {
-    context->cleanup();
-    delete this->context;
+	context->cleanup();
+	delete this->context;
 }
 
 MaterialID Renderer::createMaterial() {
@@ -79,18 +79,4 @@ void Renderer::setMeshTransform(MeshID meshId, Transform transform) {
 	mesh->transform = glm::rotate(mesh->transform, transform.rotate.y, { 0.0f, 1.0f, 0.0f });
 	mesh->transform = glm::rotate(mesh->transform, transform.rotate.z, { 0.0f, 0.0f, 0.1f });
 	mesh->transform = glm::translate(mesh->transform, { transform.translate.x, transform.translate.y, transform.translate.z });
-}
-
-void Renderer::rotateMesh(MeshID meshId, Transform::Rotation rotation) {
-    Mesh* mesh = context->meshes[meshId];
-
-    mesh->transform = glm::rotate(mesh->transform, rotation.x, { 1.0f, 0.0f, 0.0f });
-    mesh->transform = glm::rotate(mesh->transform, rotation.y, { 0.0f, 1.0f, 0.0f });
-    mesh->transform = glm::rotate(mesh->transform, rotation.z, { 0.0f, 0.0f, 0.1f });
-}
-
-void Renderer::scaleMesh(MeshID meshId, Transform::Scale scale) {
-    Mesh* mesh = context->meshes[meshId];
-
-    mesh->transform = glm::scale(mesh->transform, { scale.x, scale.y, scale.z });
 }
