@@ -548,6 +548,8 @@ void VulkanContext::createImageViews() {
 }
 
 std::vector<char> readFile(const std::string& filename) {
+	std::cout << filename << std::endl;
+
 	// Open at end so we can get position for filesize
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -684,8 +686,8 @@ VkShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) 
 }
 
 void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayout& pipelineLayout) {
-	std::vector<char> vertShaderCode = readFile("resources/spirv/vert.spv");
-	std::vector<char> fragShaderCode = readFile("resources/spirv/frag.spv");
+	std::vector<char> vertShaderCode = readFile("../resources/spirv/vert.spv");
+	std::vector<char> fragShaderCode = readFile("../resources/spirv/frag.spv");
 
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -994,18 +996,11 @@ void VulkanContext::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 	endSingleTimeCommands(commandBuffer);
 }
 
-void VulkanContext::createTextureImage() {
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
-	}
+void VulkanContext::createTexture(TextureCreateInfo info, Texture *texture) {
+	VkDeviceSize imageSize = info.width * info.height * 4;
 
 	VkBuffer stagingBuffer;
 	VmaAllocation stagingBufferAllocation;
-
 
 	CreateBufferInfo stagingCreateInfo{};
 	stagingCreateInfo.size = imageSize;
@@ -1017,34 +1012,52 @@ void VulkanContext::createTextureImage() {
 
 	void* data;
 	allocator.mapMemory(stagingBufferAllocation, &data);
-	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	memcpy(data, info.pixels, static_cast<size_t>(imageSize));
 	allocator.unmapMemory(stagingBufferAllocation);
 
-	stbi_image_free(pixels);
-
 	CreateImageInfo createInfo{};
-	createInfo.width = texWidth;
-	createInfo.height = texHeight;
+	createInfo.width = info.width;
+	createInfo.height = info.height;
 	createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	createInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
-	allocator.createImage(createInfo, textureImage, textureAllocation);
+	allocator.createImage(createInfo, texture->image, texture->allocation);
 
 	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
-	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copyBufferToImage(stagingBuffer, texture->image, static_cast<uint32_t>(info.width), static_cast<uint32_t>(info.height));
+	transitionImageLayout(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
+
+	createTextureImageView(texture);
+	createTextureSampler(texture);
 }
 
-void VulkanContext::createTextureImageView() {
-	textureImageView = createImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+void VulkanContext::createTextureImage(Texture *texture) {
+	int texWidth, texHeight, texChannels;
+	stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+	if (!pixels) {
+		throw std::runtime_error("failed to load texture image!");
+	}
+
+	TextureCreateInfo createInfo{};
+	createInfo.pixels = pixels;
+	createInfo.width = texWidth;
+	createInfo.height = texHeight;
+
+	createTexture(createInfo, texture);
+	stbi_image_free(pixels);
 }
 
-void VulkanContext::createTextureSampler() {
+void VulkanContext::createTextureImageView(Texture *texture) {
+	texture->imageView = createImageView(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+void VulkanContext::createTextureSampler(Texture *texture) {
 	VkPhysicalDeviceFeatures supportedFeatures;
 	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
 	VkPhysicalDeviceProperties properties{};
@@ -1069,7 +1082,7 @@ void VulkanContext::createTextureSampler() {
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &(texture->sampler)) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
@@ -1332,8 +1345,8 @@ void VulkanContext::createGlobalDescriptorSets() {
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = textureImageView;
-		imageInfo.sampler = textureSampler;
+		imageInfo.imageView = texture.imageView;
+		imageInfo.sampler = texture.sampler;
 
 		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -1405,9 +1418,7 @@ void VulkanContext::initVulkan() {
 	createGlobalDescriptorSetLayout();
 	createMeshDescriptorSetLayout();
 	createCommandPools();
-	createTextureImage();
-	createTextureImageView();
-	createTextureSampler();
+	createTextureImage(&texture);
 	createDepthResources();
 	createFramebuffers();
 	createUniformBuffers();
@@ -1615,10 +1626,10 @@ void VulkanContext::cleanupSwapChain() {
 void VulkanContext::cleanup() {
 	cleanupSwapChain();
 
-	vkDestroySampler(device, textureSampler, nullptr);
-	vkDestroyImageView(device, textureImageView, nullptr);
+	vkDestroySampler(device, texture.sampler, nullptr);
+	vkDestroyImageView(device, texture.imageView, nullptr);
 
-	allocator.destroyImage(textureImage, textureAllocation);
+	allocator.destroyImage(texture.image, texture.allocation);
 
 	descriptorAllocator.cleanup();
 	vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, nullptr);

@@ -8,13 +8,13 @@
 
 using namespace Plover;
 
-struct Win32_GameCode
+struct win32_GameCode
 {
 	f_gameUpdateAndRender* updateAndRender;
 };
 
-static Win32_GameCode win32_LoadGameCode() {
-	Win32_GameCode result = {};
+internal win32_GameCode win32_LoadGameCode() {
+	win32_GameCode result = {};
 	result.updateAndRender = gameUpdateAndRenderStub;
 
 	HMODULE gameCodeDLL = LoadLibraryA("../ProjectG.dll");
@@ -26,15 +26,19 @@ static Win32_GameCode win32_LoadGameCode() {
 	return result;
 }
 
-static void win32_DEBUG_log(const char *str) {
+
+// Handles
+
+void win32_DEBUG_log(const char *str) {
 	OutputDebugStringA(str);
 }
 
-static Handles win32_CreateHandles() {
+internal Handles win32_CreateHandles() {
 	Handles handles{};
 	handles.DEBUG_log = win32_DEBUG_log;
 	return handles;
 }
+
 
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
@@ -42,7 +46,7 @@ int CALLBACK WinMain(
 	LPSTR     lpCmdLine,
 	int       nShowCmd
 ) {
-	Win32_GameCode game = win32_LoadGameCode();
+	win32_GameCode game = win32_LoadGameCode();
 	Handles handles = win32_CreateHandles();
 	Renderer renderer{};
 

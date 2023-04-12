@@ -3,12 +3,10 @@
 #include<string>
 #include<vector>
 
+#include "plover/plover.h"
 
 namespace Plover {
 	struct VulkanContext;
-
-	typedef uint32_t MeshID;
-	typedef size_t MaterialID;
 
 	struct Transform {
 		struct Translate {

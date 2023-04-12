@@ -27,3 +27,5 @@
 #include <limits>
 #include <fstream>
 #include <array>
+
+#include "plover/plover.h"

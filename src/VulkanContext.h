@@ -35,6 +35,19 @@ namespace Plover {
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
+	struct TextureCreateInfo {
+		void* pixels;
+		u32 width;
+		u32 height;
+	};
+
+	struct Texture {
+		VkImage image;
+		VmaAllocation allocation;
+		VkImageView imageView;
+		VkSampler sampler;
+	};
+
 	struct VulkanContext {
 		const std::vector<const char*> validationLayers = {
 				"VK_LAYER_KHRONOS_validation"
@@ -91,10 +104,12 @@ namespace Plover {
 		std::vector<VmaAllocation> uniformBuffersAllocations;
 		std::vector<void*> uniformBuffersMapped;
 
-		VkImage textureImage;
-		VmaAllocation textureAllocation;
-		VkImageView textureImageView;
-		VkSampler textureSampler;
+		VkImage _textureImage;
+		VmaAllocation _textureAllocation;
+		VkImageView _textureImageView;
+		VkSampler _textureSampler;
+
+		Texture texture;
 
 		VkImage depthImage;
 		VmaAllocation depthImageAllocation;
@@ -191,11 +206,13 @@ namespace Plover {
 
 		void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-		void createTextureImage();
+		void createTexture(TextureCreateInfo info, Texture *texture);
 
-		void createTextureImageView();
+		void createTextureImage(Texture *texture);
 
-		void createTextureSampler();
+		void createTextureImageView(Texture *texture);
+
+		void createTextureSampler(Texture *texture);
 
 		VkFormat findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
