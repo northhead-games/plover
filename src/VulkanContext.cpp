@@ -919,7 +919,7 @@ void VulkanContext::createGraphicsPipeline(PipelineCreateInfo info, VkPipeline& 
 
 void VulkanContext::createUIPipeline() {
 	PipelineCreateInfo createInfo{};
-	createInfo.useDepthBuffer = true;
+	createInfo.useDepthBuffer = false;
 	createInfo.doCulling = true;
 	createInfo.subpass = 1; // UI Subpass
 	createInfo.vertexShaderPath = "../resources/spirv/ui_vert.spv";
