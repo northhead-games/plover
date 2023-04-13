@@ -4,6 +4,3 @@
 [submodule "libraries/glm"]
 	path = libraries/glm
 	url = git@github.com:g-truc/glm.git
-[submodule "libraries/freetype"]
-	path = libraries/freetype
-	url = git@github.com:freetype/freetype.git

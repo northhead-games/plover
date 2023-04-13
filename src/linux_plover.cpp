@@ -55,10 +55,12 @@ internal_func Handles linux_createHandles() {
 	return handles;
 }
 
+// Memory
+
 internal_func GameMemory linux_createMemory() {
 	GameMemory memory{};
 	memory.initialized = false;
-	memory.persistentStorageSize = Gigabytes(46);
+	memory.persistentStorageSize = Megabytes(64);
 	memory.persistentStorage = calloc(1, memory.persistentStorageSize);
 
 	return memory;
