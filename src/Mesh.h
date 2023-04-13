@@ -1,5 +1,6 @@
 #pragma once
 #include "includes.h"
+#include "Texture.h"
 
 namespace Plover {
 	struct Material {
@@ -70,6 +71,18 @@ namespace Plover {
 		size_t materialId;
 
 		void updateUniformBuffer(uint32_t currentImage);
+	};
+
+	struct UIQuad {
+		VkBuffer vertexBuffer;
+		VmaAllocation vertexAllocation;
+
+		VkBuffer indexBuffer;
+		VmaAllocation indexAllocation;
+
+		Texture texture;
+
+		std::vector<VkDescriptorSet> uniformDescriptorSets;
 	};
 }
 

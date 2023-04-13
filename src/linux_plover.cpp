@@ -64,6 +64,10 @@ internal_func GameMemory linux_createMemory() {
 	return memory;
 }
 
+internal_func void linux_destroyMemory(GameMemory memory) {
+	free(memory.persistentStorage);
+}
+
 int main() {
 	linux_GameCode game = linux_loadGameCode();
 	Handles handles = linux_createHandles();
@@ -80,5 +84,6 @@ int main() {
 	}
 	renderer.cleanup();
 
+	linux_destroyMemory(memory);
 	return 0;
 }

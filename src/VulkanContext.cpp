@@ -596,30 +596,64 @@ void VulkanContext::createRenderPass() {
 	depthAttachmentRef.attachment = 1;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpass{};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &colorAttachmentRef;
-	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+	// Two subpasses
+	VkSubpassDescription subpasses[2];
+
+	// Main Forward Rendering Pass
+	subpasses[0] = {};
+	subpasses[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpasses[0].colorAttachmentCount = 1;
+	subpasses[0].pColorAttachments = &colorAttachmentRef;
+	subpasses[0].pDepthStencilAttachment = &depthAttachmentRef;
+
+	// UI Pass
+	subpasses[1] = {};
+	subpasses[1].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpasses[1].colorAttachmentCount = 1;
+	subpasses[1].pColorAttachments = &colorAttachmentRef;
+	subpasses[1].pDepthStencilAttachment = nullptr;
 
 	// Ensure render pass depends on color attachment
-	VkSubpassDependency dependency{};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL; // Implicit subpass before render
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	VkSubpassDependency dependencies[2];
+	dependencies[0] = {};
+	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL; // Implicit subpass before render
+	dependencies[0].dstSubpass = 0;
+	dependencies[0].srcStageMask =
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+		| VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].srcAccessMask = 0;
+	dependencies[0].dstStageMask =
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+		| VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[0].dstAccessMask =
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+		| VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+	dependencies[1] = {};
+	dependencies[1].srcSubpass = 0;
+	dependencies[1].dstSubpass = 1;
+	dependencies[1].srcStageMask =
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+		| VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[1].srcAccessMask =
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+		| VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstStageMask =
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+		| VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	dependencies[1].dstAccessMask =
+		VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+		| VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
 	std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 	VkRenderPassCreateInfo renderPassInfo{};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
+	renderPassInfo.subpassCount = 2;
+	renderPassInfo.pSubpasses = subpasses;
+	renderPassInfo.dependencyCount = 2;
+	renderPassInfo.pDependencies = dependencies;
 
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create render pass!");
@@ -671,6 +705,24 @@ void VulkanContext::createMeshDescriptorSetLayout() {
 	}
 }
 
+void VulkanContext::createUIDescriptorSetLayout() {
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	samplerLayoutBinding.binding = 0;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &samplerLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &uiDescriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("falied to create ui descriptor set layout!");
+	}
+}
+
 VkShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) {
 	VkShaderModuleCreateInfo createInfo{};
 
@@ -685,9 +737,9 @@ VkShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) 
 	return shaderModule;
 }
 
-void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayout& pipelineLayout) {
-	std::vector<char> vertShaderCode = readFile("../resources/spirv/vert.spv");
-	std::vector<char> fragShaderCode = readFile("../resources/spirv/frag.spv");
+void VulkanContext::createGraphicsPipeline(PipelineCreateInfo info, VkPipeline& pipeline, VkPipelineLayout& pipelineLayout) {
+	std::vector<char> vertShaderCode = readFile(info.vertexShaderPath);
+	std::vector<char> fragShaderCode = readFile(info.fragmentShaderPath);
 
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -758,7 +810,11 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f; // Any larger requires wideLines GPU feature
-	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	if (info.doCulling) {
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+	} else {
+		rasterizer.cullMode = VK_CULL_MODE_NONE;
+	}
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	// We don't need depth biasing
 	rasterizer.depthBiasEnable = VK_FALSE;
@@ -782,9 +838,9 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 		VK_COLOR_COMPONENT_B_BIT |
 		VK_COLOR_COMPONENT_A_BIT;
 
-	colorBlendAttachment.blendEnable = VK_FALSE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
@@ -802,13 +858,11 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 	colorBlending.blendConstants[2] = 0.0f;
 	colorBlending.blendConstants[3] = 0.0f;
 
-	std::array<VkDescriptorSetLayout, 2> descriptorSetLayouts = { globalDescriptorSetLayout, meshDescriptorSetLayout };
-
 	// Uniform vector setup
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
-	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+	pipelineLayoutInfo.setLayoutCount = info.descriptorSetLayoutCount;
+	pipelineLayoutInfo.pSetLayouts = info.pDescriptorSetLayouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -818,15 +872,19 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil{};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = VK_TRUE;
-	depthStencil.depthWriteEnable = VK_TRUE;
-	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.minDepthBounds = 0.0f;
-	depthStencil.maxDepthBounds = 1.0f;
-	depthStencil.stencilTestEnable = VK_FALSE;
-	depthStencil.front = {};
-	depthStencil.back = {};
+	if (info.useDepthBuffer) {
+		depthStencil.depthTestEnable = VK_TRUE;
+		depthStencil.depthWriteEnable = VK_TRUE;
+		depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+		depthStencil.depthBoundsTestEnable = VK_FALSE;
+		depthStencil.minDepthBounds = 0.0f;
+		depthStencil.maxDepthBounds = 1.0f;
+		depthStencil.stencilTestEnable = VK_FALSE;
+		depthStencil.front = {};
+		depthStencil.back = {};
+	} else {
+		depthStencil.depthTestEnable = VK_FALSE;
+	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo{};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -846,7 +904,7 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 	pipelineInfo.layout = pipelineLayout;
 
 	pipelineInfo.renderPass = renderPass;
-	pipelineInfo.subpass = 0;
+	pipelineInfo.subpass = info.subpass;
 
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
@@ -859,11 +917,34 @@ void VulkanContext::createGraphicsPipeline(VkPipeline& pipeline, VkPipelineLayou
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
+void VulkanContext::createUIPipeline() {
+	PipelineCreateInfo createInfo{};
+	createInfo.useDepthBuffer = true;
+	createInfo.doCulling = true;
+	createInfo.subpass = 1; // UI Subpass
+	createInfo.vertexShaderPath = "../resources/spirv/ui_vert.spv";
+	createInfo.fragmentShaderPath = "../resources/spirv/ui_frag.spv";
+	createInfo.descriptorSetLayoutCount = 1;
+	createInfo.pDescriptorSetLayouts = &uiDescriptorSetLayout;
+
+	createGraphicsPipeline(createInfo, uiPipeline, uiPipelineLayout);
+}
+
 size_t VulkanContext::createMaterial() {
-	static size_t nextId = 0;
+	local_persist size_t nextId = 0;
 	Material material{};
 
-	createGraphicsPipeline(material.pipeline, material.pipelineLayout);
+	VkDescriptorSetLayout descriptorSetLayouts[2] = { globalDescriptorSetLayout, meshDescriptorSetLayout };
+	PipelineCreateInfo createInfo{};
+	createInfo.useDepthBuffer = true;
+	createInfo.doCulling = true;
+	createInfo.subpass = 0; // Forward Rendering Subpass
+	createInfo.vertexShaderPath = "../resources/spirv/vert.spv";
+	createInfo.fragmentShaderPath = "../resources/spirv/frag.spv";
+	createInfo.descriptorSetLayoutCount = 2;
+	createInfo.pDescriptorSetLayouts = descriptorSetLayouts;
+
+	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
 	size_t id = nextId;
 	materials[id] = material;
 	nextId++;
@@ -996,7 +1077,7 @@ void VulkanContext::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 	endSingleTimeCommands(commandBuffer);
 }
 
-void VulkanContext::createTexture(TextureCreateInfo info, Texture *texture) {
+void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 	VkDeviceSize imageSize = info.width * info.height * 4;
 
 	VkBuffer stagingBuffer;
@@ -1023,12 +1104,12 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture *texture) {
 	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	createInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
-	allocator.createImage(createInfo, texture->image, texture->allocation);
+	allocator.createImage(createInfo, texture.image, texture.allocation);
 
 	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
-	transitionImageLayout(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, texture->image, static_cast<uint32_t>(info.width), static_cast<uint32_t>(info.height));
-	transitionImageLayout(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copyBufferToImage(stagingBuffer, texture.image, static_cast<uint32_t>(info.width), static_cast<uint32_t>(info.height));
+	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 
@@ -1036,9 +1117,9 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture *texture) {
 	createTextureSampler(texture);
 }
 
-void VulkanContext::createTextureImage(Texture *texture) {
+void VulkanContext::createTextureImage(Texture& texture, const char *path) {
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 	if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
@@ -1053,11 +1134,11 @@ void VulkanContext::createTextureImage(Texture *texture) {
 	stbi_image_free(pixels);
 }
 
-void VulkanContext::createTextureImageView(Texture *texture) {
-	texture->imageView = createImageView(texture->image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+void VulkanContext::createTextureImageView(Texture& texture) {
+	texture.imageView = createImageView(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-void VulkanContext::createTextureSampler(Texture *texture) {
+void VulkanContext::createTextureSampler(Texture& texture) {
 	VkPhysicalDeviceFeatures supportedFeatures;
 	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
 	VkPhysicalDeviceProperties properties{};
@@ -1082,7 +1163,7 @@ void VulkanContext::createTextureSampler(Texture *texture) {
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &(texture->sampler)) != VK_SUCCESS) {
+	if (vkCreateSampler(device, &samplerInfo, nullptr, &(texture.sampler)) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 }
@@ -1225,10 +1306,32 @@ void VulkanContext::createMeshUniform(Mesh& mesh) {
 	}
 }
 
-size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
-	Mesh* mesh = new Mesh;
+void VulkanContext::createUIUniform(UIQuad& quad) {
+	quad.uniformDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, quad.uniformDescriptorSets.data(), uiDescriptorSetLayout);
 
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = quad.texture.imageView;
+		imageInfo.sampler = quad.texture.sampler;
+
+		VkWriteDescriptorSet descriptorWrite{};
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = quad.uniformDescriptorSets[i];
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &imageInfo;
+
+		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+	}
+}
+
+size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
 	static size_t nextId = 0;
+	Mesh* mesh = new Mesh;
 
 	mesh->vertices = vertices;
 	mesh->indices = indices;
@@ -1243,6 +1346,21 @@ size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t
 	nextId++;
 
 	return id;
+}
+
+size_t VulkanContext::addUIQuad() {
+	static size_t nextId = 0;
+	UIQuad quad{};
+
+	createTextureImage(quad.texture, TEXTURE_PATH.c_str());
+	createVertexBuffer(quadVertices, quad.vertexBuffer, quad.vertexAllocation);
+	createIndexBuffer(quadIndices, quad.indexBuffer, quad.indexAllocation);
+	createUIUniform(quad);
+
+	uiQuads[nextId] = quad;
+	nextId++;
+
+	return nextId;
 }
 
 void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation)
@@ -1417,8 +1535,10 @@ void VulkanContext::initVulkan() {
 	createRenderPass();
 	createGlobalDescriptorSetLayout();
 	createMeshDescriptorSetLayout();
+	createUIDescriptorSetLayout();
+	createUIPipeline();
 	createCommandPools();
-	createTextureImage(&texture);
+	createTextureImage(texture, TEXTURE_PATH.c_str());
 	createDepthResources();
 	createFramebuffers();
 	createUniformBuffers();
@@ -1426,6 +1546,8 @@ void VulkanContext::initVulkan() {
 	createGlobalDescriptorSets();
 	createCommandBuffer();
 	createSyncObjects();
+
+	addUIQuad();
 }
 
 void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -1482,6 +1604,21 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 0, 1, &globalDescriptorSets[currentFrame], 0, nullptr);
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 1, 1, &mesh->uniformDescriptorSets[currentFrame], 0, nullptr);
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh->indices.size()), 1, 0, 0, 0);
+	}
+
+	// UI Subpass
+	vkCmdNextSubpass(commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipeline);
+
+	for (auto kv : uiQuads) {
+		UIQuad quad = kv.second;
+		VkBuffer vertexBuffers[] = { quad.vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffer, quad.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, uiPipelineLayout, 0, 1, &quad.uniformDescriptorSets[currentFrame], 0, nullptr);
+
+		vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 	}
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -1631,9 +1768,9 @@ void VulkanContext::cleanup() {
 
 	allocator.destroyImage(texture.image, texture.allocation);
 
-	descriptorAllocator.cleanup();
 	vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device, meshDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device, uiDescriptorSetLayout, nullptr);
 
 	for (const auto& kv : meshes) {
 		Mesh* mesh = kv.second;
@@ -1647,11 +1784,26 @@ void VulkanContext::cleanup() {
 		delete mesh;
 	}
 
+	for (const auto& kv : uiQuads) {
+		UIQuad quad = kv.second;
+		allocator.destroyBuffer(quad.vertexBuffer, quad.vertexAllocation);
+		allocator.destroyBuffer(quad.indexBuffer, quad.indexAllocation);
+
+		vkDestroySampler(device, quad.texture.sampler, nullptr);
+		vkDestroyImageView(device, quad.texture.imageView, nullptr);
+		allocator.destroyImage(quad.texture.image, quad.texture.allocation);
+	}
+
+	descriptorAllocator.cleanup();
+
 	for (const auto& kv : materials) {
 		Material material = kv.second;
 		vkDestroyPipeline(device, material.pipeline, nullptr);
 		vkDestroyPipelineLayout(device, material.pipelineLayout, nullptr);
 	}
+
+	vkDestroyPipeline(device, uiPipeline, nullptr);
+	vkDestroyPipelineLayout(device, uiPipelineLayout, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		allocator.destroyBuffer(uniformBuffers[i], uniformBuffersAllocations[i]);

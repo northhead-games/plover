@@ -1,7 +1,7 @@
 #include "ttfRenderer.h"
 
-FT_Library library;
-FT_Face    face;
+global_var FT_Library library;
+global_var FT_Face    face;
 
 bool ttf_init() {
 	int error;
