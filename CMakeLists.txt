@@ -8,7 +8,6 @@ include(GNUInstallDirs)
 
 set(Vulkan_LIBRARY $ENV{Vulkan_LIBRARY})
 find_package(Vulkan REQUIRED)
-find_package(Freetype REQUIRED)
 message(STATUS ${PROJECT_NAME})
 
 if (WIN32)
@@ -26,22 +25,25 @@ add_executable(${PROJECT_NAME} ${WIN32_MAIN} ${MAIN_FILE} "src/Renderer.cpp" "sr
 
 add_subdirectory(libraries/glfw)
 add_subdirectory(libraries/glm)
+add_subdirectory(libraries/freetype)
 add_subdirectory(libraries/header_libs)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include
+	PUBLIC libraries/freetype/include
 	PUBLIC libraries/header_libs/include
 )
 
 target_link_directories(${PROJECT_NAME}
 	PUBLIC libraries/glfw/src
+	PUBLIC libraries/freetype/src
 )
 
 target_link_libraries(${PROJECT_NAME}
 	PUBLIC Vulkan::Vulkan
-	PUBLIC Freetype::Freetype
+	PUBLIC freetype
 	PUBLIC glfw
 	PUBLIC glm
 )
