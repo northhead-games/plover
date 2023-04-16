@@ -1,7 +1,7 @@
 #pragma once
 
 #include "plover/plover.h"
-#include "ft2build.h"
-#include FT_FREETYPE_H
+#include "Texture.h"
 
-bool ttf_init();
+bool ttfInit();
+void drawGlyphs(const char *text, Bitmap& bitmap);

@@ -1078,7 +1078,7 @@ void VulkanContext::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 }
 
 void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
-	VkDeviceSize imageSize = info.width * info.height * 4;
+	VkDeviceSize imageSize = info.bitmap.width * info.bitmap.height * 4;
 
 	VkBuffer stagingBuffer;
 	VmaAllocation stagingBufferAllocation;
@@ -1093,12 +1093,12 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 
 	void* data;
 	allocator.mapMemory(stagingBufferAllocation, &data);
-	memcpy(data, info.pixels, static_cast<size_t>(imageSize));
+	memcpy(data, info.bitmap.pixels, static_cast<size_t>(imageSize));
 	allocator.unmapMemory(stagingBufferAllocation);
 
 	CreateImageInfo createInfo{};
-	createInfo.width = info.width;
-	createInfo.height = info.height;
+	createInfo.width = info.bitmap.width;
+	createInfo.height = info.bitmap.height;
 	createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
 	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1108,7 +1108,7 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 
 	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
 	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, texture.image, static_cast<uint32_t>(info.width), static_cast<uint32_t>(info.height));
+	copyBufferToImage(stagingBuffer, texture.image, static_cast<uint32_t>(info.bitmap.width), static_cast<uint32_t>(info.bitmap.height));
 	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
@@ -1126,9 +1126,9 @@ void VulkanContext::createTextureImage(Texture& texture, const char *path) {
 	}
 
 	TextureCreateInfo createInfo{};
-	createInfo.pixels = pixels;
-	createInfo.width = texWidth;
-	createInfo.height = texHeight;
+	createInfo.bitmap.pixels = pixels;
+	createInfo.bitmap.width = texWidth;
+	createInfo.bitmap.height = texHeight;
 
 	createTexture(createInfo, texture);
 	stbi_image_free(pixels);

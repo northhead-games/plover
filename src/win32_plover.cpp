@@ -83,7 +83,7 @@ int CALLBACK WinMain(
 	Handles handles = win32_createHandles();
 	GameMemory memory = win32_createMemory();
 
-	if (!ttf_init()) {
+	if (!ttfInit()) {
 		exit(-1);
 	}
 

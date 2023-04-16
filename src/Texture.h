@@ -1,11 +1,20 @@
 #pragma once
 
-#include "ttfRenderer.h"
+#include "includes.h"
 
-struct TextureCreateInfo {
+enum BitmapFormat {
+	G8, // 8-bit gray
+};
+
+struct Bitmap {
 	void* pixels;
 	u32 width;
 	u32 height;
+	BitmapFormat format;
+};
+
+struct TextureCreateInfo {
+	Bitmap bitmap;
 };
 
 struct Texture {
@@ -15,10 +24,3 @@ struct Texture {
 	VkSampler sampler;
 };
 
-struct Bitmap {
-	void* pixels;
-	u32 width;
-	u32 height;
-
-	void drawGlyph(FT_Bitmap glyph, u32 x, u32 y);
-};

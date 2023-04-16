@@ -1,9 +1,11 @@
 #pragma once
 
+// GLFW
 #define GLFW_INCLUDE_VULKAN
 #define GLFW_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLFW/glfw3.h>
 
+// GLM
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #define GLM_ENABLE_EXPERIMENTAL
@@ -11,7 +13,12 @@
 #include <glm/gtx/hash.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+// VMA
 #include <vma/vk_mem_alloc.h>
+
+// Freetype
+#include "ft2build.h"
+#include FT_FREETYPE_H
 
 #include <chrono>
 #include <unordered_map>

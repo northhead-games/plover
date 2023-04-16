@@ -39,6 +39,7 @@ add_subdirectory(libraries/header_libs)
 
 target_include_directories(${PROJECT_NAME}
 	PUBLIC include/
+	PUBLIC ${Vulkan_INCLUDE_DIRS}
 	PUBLIC libraries/glfw/include
 	PUBLIC libraries/glm/include
 	PUBLIC libraries/header_libs/include

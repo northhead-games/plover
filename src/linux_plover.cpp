@@ -76,7 +76,7 @@ int main() {
 	GameMemory memory = linux_createMemory();
 
 	// Initialize font rendering
-	if (!ttf_init()) {
+	if (!ttfInit()) {
 		exit(-1);
 	}
 
