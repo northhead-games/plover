@@ -3,6 +3,21 @@
 global_var FT_Library library;
 global_var FT_Face    face;
 
+// typedef unsigned long
+// (*FT_Stream_IoFunc)( FT_Stream       stream,
+//                      unsigned long   offset,
+//                      unsigned char*  buffer,
+//                      unsigned long   count );
+
+#define ttf_u16(b, o) 255 * (b + o)[0] + (b + o)[1]
+
+internal_func void loadGPOSTable() {
+	assert(strcmp(FT_Get_Font_Format(face), "TrueType") == 0);
+
+	FT_Stream stream = face->stream;
+	u16 numTables = ttf_u16(stream->base, 4);
+}
+
 bool ttfInit() {
 	int error;
 
@@ -26,23 +41,39 @@ bool ttfInit() {
 
 	error = FT_Set_Char_Size( face, 
 							  0, /* char width (0 = same as height) */
-							  16 * 64, /* char heigth in 1/64 of pt */
+							  30 * 64, /* char heigth in 1/64 of pt */
 							  96, /* Horizontal dpi (mm) */
 							  96 /* Vertical dpi (mm) */
 							 );
+
+	loadGPOSTable();
 
 	return true;
 }
 
 internal_func void drawGlyph(Bitmap& bitmap, FT_Bitmap& glyph, u32 x, u32 y) {
-	for (int row = 0; row < glyph.rows; row++) {
+	assert(glyph.pixel_mode == FT_PIXEL_MODE_GRAY);
+
+	for (u32 row = 0; row < glyph.rows; row++) {
+		for (u32 col = 0; col < glyph.width; col++) {
+			bitmap.writeGrayscale(glyph.buffer[row * glyph.width + col], x + col, y + row);
+		}
 	}
 }
 
+#define FONT_SCALE 26.6
+
 void drawGlyphs(const char *text, Bitmap& bitmap) {
 	FT_GlyphSlot slot = face->glyph;
-	u32 pen_x = 0, pen_y = 0;
+	u32 pen_x = 16, pen_y = face->ascender / FONT_SCALE;
 	int error;
+
+	FT_Bool use_kerning = FT_HAS_KERNING( face );
+	FT_UInt previous = 0;
+
+	if (use_kerning) {
+		printf("blah\n");
+	}
 
 	u32 idx = 0;
 	while (text[idx] != '\0') {
@@ -52,13 +83,20 @@ void drawGlyphs(const char *text, Bitmap& bitmap) {
 
 		assert(!error);
 
+		if (pen_x + slot->metrics.width / FONT_SCALE > bitmap.width) {
+			pen_y += face->height / FONT_SCALE;
+			pen_x = 16;
+		}
+
 		drawGlyph(bitmap,
 				  slot->bitmap,
 				  pen_x + slot->bitmap_left,
-				  pen_y + slot->bitmap_top );
+				  pen_y - slot->bitmap_top );
 
 		pen_x += slot->advance.x >> 6;
+		pen_y += slot->advance.y >> 6;
 
 		idx++;
 	}
+	
 }

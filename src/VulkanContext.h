@@ -8,6 +8,7 @@
 #include "DescriptorAllocator.h"
 #include "Mesh.h"
 #include "Texture.h"
+#include "ttfRenderer.h"
 #include "includes.h"
 
 namespace Plover {
@@ -219,8 +220,6 @@ namespace Plover {
 		void createTexture(TextureCreateInfo info, Texture& texture);
 
 		void createTextureImage(Texture& texture, const char *path);
-
-		void createTextureImageView(Texture& texture);
 
 		void createTextureSampler(Texture& texture);
 

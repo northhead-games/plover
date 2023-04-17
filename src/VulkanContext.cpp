@@ -1078,7 +1078,8 @@ void VulkanContext::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 }
 
 void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
-	VkDeviceSize imageSize = info.bitmap.width * info.bitmap.height * 4;
+	VkDeviceSize imageSize = info.bitmap.width * info.bitmap.height * info.bitmap.stride();
+	VkFormat format = info.bitmap.vulkanFormat();
 
 	VkBuffer stagingBuffer;
 	VmaAllocation stagingBufferAllocation;
@@ -1099,7 +1100,7 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 	CreateImageInfo createInfo{};
 	createInfo.width = info.bitmap.width;
 	createInfo.height = info.bitmap.height;
-	createInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
+	createInfo.format = format;
 	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	createInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -1107,13 +1108,13 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 	allocator.createImage(createInfo, texture.image, texture.allocation);
 
 	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
-	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transitionImageLayout(texture.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer, texture.image, static_cast<uint32_t>(info.bitmap.width), static_cast<uint32_t>(info.bitmap.height));
-	transitionImageLayout(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(texture.image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
 
-	createTextureImageView(texture);
+	texture.imageView = createImageView(texture.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
 	createTextureSampler(texture);
 }
 
@@ -1129,13 +1130,10 @@ void VulkanContext::createTextureImage(Texture& texture, const char *path) {
 	createInfo.bitmap.pixels = pixels;
 	createInfo.bitmap.width = texWidth;
 	createInfo.bitmap.height = texHeight;
+	createInfo.bitmap.format = RGBA8;
 
 	createTexture(createInfo, texture);
 	stbi_image_free(pixels);
-}
-
-void VulkanContext::createTextureImageView(Texture& texture) {
-	texture.imageView = createImageView(texture.image, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void VulkanContext::createTextureSampler(Texture& texture) {
@@ -1352,7 +1350,29 @@ size_t VulkanContext::addUIQuad() {
 	static size_t nextId = 0;
 	UIQuad quad{};
 
-	createTextureImage(quad.texture, TEXTURE_PATH.c_str());
+	Bitmap bitmap{};
+	bitmap.width = 800;
+	bitmap.height = 800;
+	bitmap.pixels = new u8[bitmap.width * bitmap.height * 4] { 0 };
+	bitmap.format = RGBA8;
+
+	TextureCreateInfo createInfo{};
+	createInfo.bitmap = bitmap;
+
+	for (int x = 0; x < bitmap.width; x++) {
+		for (int y = 0; y < bitmap.height; y++) {
+			if (x < 4 ||
+				x > bitmap.width - 4 ||
+				y < 4 ||
+				y > bitmap.height - 4) {
+
+				bitmap.writeGrayscale(255, x, y);
+			}
+		}
+	}
+
+	drawGlyphs("The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog AvAvAv", bitmap);
+	createTexture(createInfo, quad.texture);
 	createVertexBuffer(quadVertices, quad.vertexBuffer, quad.vertexAllocation);
 	createIndexBuffer(quadIndices, quad.indexBuffer, quad.indexAllocation);
 	createUIUniform(quad);
