@@ -1,6 +1,9 @@
 #pragma once
 
-#include "plover/plover.h"
+#include "freetype/ftfntfmt.h"
+#include "freetype/ftotval.h"
+
+#include "includes.h"
 #include "Texture.h"
 
 bool ttfInit();

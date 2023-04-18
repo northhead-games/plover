@@ -1,4 +1,4 @@
-#include "plover/plover.h"
+#include "includes.h"
 
 #include "Renderer.h"
 #include "ttfRenderer.h"
@@ -10,7 +10,31 @@
 using namespace Plover;
 
 // Globals
+
 global_var Renderer renderer{};
+
+// OS-Independent Wrappers
+// TODO(oliver): Handle errors instead of just asserting
+void readFile(const char *path, u8 **buffer, u64 *bufferSize) {
+	FILE *fp = fopen(path, "r");
+	if (fp != NULL) {
+		if (fseek(fp, 0L, SEEK_END) == 0) {
+			*bufferSize = ftell(fp);
+			assert(*bufferSize != -1);
+
+			*buffer = new u8[sizeof(u8) * (*bufferSize + 1)];
+			assert(fseek(fp, 0L, SEEK_SET) == 0);
+
+		    *bufferSize = fread(*buffer, sizeof(u8), *bufferSize, fp);
+			assert(ferror(fp) == 0);
+
+			(*buffer)[(*bufferSize)++] = '\0';
+		}
+	}
+	fclose(fp);
+}
+
+// Shared Library Loading
 
 struct linux_GameCode {
 	f_gameUpdateAndRender* updateAndRender;

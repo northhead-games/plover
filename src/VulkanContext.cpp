@@ -12,7 +12,9 @@ void VulkanContext::initWindow() {
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	// NOTE(oliver): We'll work with a static aspect ratio for now
+	// glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
 	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
@@ -1351,8 +1353,8 @@ size_t VulkanContext::addUIQuad() {
 	UIQuad quad{};
 
 	Bitmap bitmap{};
-	bitmap.width = 800;
-	bitmap.height = 800;
+	bitmap.width = 640;
+	bitmap.height = 360;
 	bitmap.pixels = new u8[bitmap.width * bitmap.height * 4] { 0 };
 	bitmap.format = RGBA8;
 
@@ -1371,7 +1373,7 @@ size_t VulkanContext::addUIQuad() {
 		}
 	}
 
-	drawGlyphs("The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog AvAvAv", bitmap);
+	drawGlyphs("The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog AvAvAv WoWo", bitmap);
 	createTexture(createInfo, quad.texture);
 	createVertexBuffer(quadVertices, quad.vertexBuffer, quad.vertexAllocation);
 	createIndexBuffer(quadIndices, quad.indexBuffer, quad.indexAllocation);

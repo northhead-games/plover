@@ -19,7 +19,6 @@
 // Freetype
 #include "ft2build.h"
 #include FT_FREETYPE_H
-#include "freetype/ftfntfmt.h"
 
 #include <chrono>
 #include <unordered_map>
@@ -37,3 +36,4 @@
 #include <array>
 
 #include "plover/plover.h"
+#include "plover_int.h"
