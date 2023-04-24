@@ -7,8 +7,6 @@
 #include <vma/vk_mem_alloc.h>
 #pragma clang diagnostic pop
 
-using namespace Plover;
-
 //TODO(oliver): move this into VulkanContext.cpp
 void VulkanAllocator::init(VulkanContext* context, VmaAllocatorCreateInfo& allocatorInfo) {
 	this->context = context;

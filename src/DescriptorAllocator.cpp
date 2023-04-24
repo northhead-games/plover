@@ -1,7 +1,5 @@
 #include "DescriptorAllocator.h"
 
-using namespace Plover;
-
 void DescriptorAllocator::init(VkDevice device) {
     this->device = device;
 }

@@ -1,42 +1,66 @@
 #pragma once
 
-#include<string>
-#include<vector>
+#include "includes.h"
 
-#include "plover/plover.h"
+struct VulkanContext;
 
-namespace Plover {
-	struct VulkanContext;
+struct Transform {
+	struct Translate {
+		float x;
+		float y;
+		float z;
+	} translate;
 
-	struct Transform {
-		struct Translate {
-			float x;
-			float y;
-			float z;
-		} translate;
+	struct Rotation {
+		float x;
+		float y;
+		float z;
+	} rotate;
 
-		struct Rotation {
-			float x;
-			float y;
-			float z;
-		} rotate;
+	struct Scale {
+		float x;
+		float y;
+		float z;
+	} scale;
+};
 
-		struct Scale {
-			float x;
-			float y;
-			float z;
-		} scale;
-	};
+#define MESSAGE_QUEUE_SIZE 128
 
-	struct Renderer {
-		VulkanContext* context;
+template <typename T>
+struct MessageQueue {
+	T buffer[MESSAGE_QUEUE_SIZE];
+	u8 head;
+	u8 tail;
 
-		void init();
-		bool render();
-		void cleanup();
-		MaterialID createMaterial();
-		MeshID loadModel(const std::string name, MaterialID materialId);
+	bool hasMessage() {
+		return head != tail;
+	}
 
-		void setMeshTransform(MeshID mesh, Transform transform);
-	};
-}
+	void push(T element) {
+		buffer[tail] = element;
+		tail = (tail + 1) % MESSAGE_QUEUE_SIZE;
+		assert(tail != head); //NOTE(oliver): If we run over we need to enlarge
+	}
+
+	T pop() {
+		assert(head != tail);
+		u8 oldHead = head;
+		head = (head + 1) % MESSAGE_QUEUE_SIZE;
+		return buffer[oldHead];
+	}
+};
+
+struct Renderer {
+	VulkanContext* context;
+
+	MessageQueue<RenderMessage> msgQueue;
+	MessageQueue<RenderResult> resultQueue;
+
+	void init();
+	bool render();
+	void cleanup();
+
+	void processMessage(RenderMessage inMsg);
+	void processMessages();
+};
+

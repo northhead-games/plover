@@ -7,10 +7,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 
-using namespace Plover;
-
 // Globals
-
 global_var Renderer renderer{};
 
 // OS-Independent Wrappers
@@ -62,20 +59,24 @@ void linux_DEBUG_log(const char *str) {
 	printf("%s", str);
 }
 
-MaterialID linux_createMaterial() {
-	return renderer.createMaterial();
+void linux_pushRenderMessage(RenderMessage inMsg) {
+	return renderer.msgQueue.push(inMsg);
 }
 
-MeshID linux_createMesh(const char *path, MaterialID material) {
-	std::string path_str(path);
-	return renderer.loadModel(path_str, material);
+bool linux_hasRenderResult() {
+	return renderer.resultQueue.hasMessage();
+}
+
+RenderResult linux_popRenderResult() {
+	return renderer.resultQueue.pop();
 }
 
 internal_func Handles linux_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = linux_DEBUG_log;
-	handles.createMaterial = linux_createMaterial;
-	handles.createMesh = linux_createMesh;
+	handles.pushRenderMessage = linux_pushRenderMessage;
+	handles.hasRenderResult = linux_hasRenderResult;
+	handles.popRenderResult = linux_popRenderResult;
 	return handles;
 }
 
@@ -107,6 +108,7 @@ int main() {
 	renderer.init();
 	while (renderer.render()) {
 		game.updateAndRender(&handles, &memory);
+		renderer.processMessages();
 	}
 	renderer.cleanup();
 

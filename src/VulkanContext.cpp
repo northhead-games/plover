@@ -6,8 +6,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
-using namespace Plover;
-
 void VulkanContext::initWindow() {
 	glfwInit();
 
@@ -1373,7 +1371,7 @@ size_t VulkanContext::addUIQuad() {
 		}
 	}
 
-	drawGlyphs("The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog The quick brown fox jumped over the lazy dog AvAvAv WoWo", bitmap);
+	drawGlyphs("AvAvAv WoWo The Quick Brown Fox Jumped Over The Lazy Dog", bitmap);
 	createTexture(createInfo, quad.texture);
 	createVertexBuffer(quadVertices, quad.vertexBuffer, quad.vertexAllocation);
 	createIndexBuffer(quadIndices, quad.indexBuffer, quad.indexAllocation);
@@ -1382,6 +1380,7 @@ size_t VulkanContext::addUIQuad() {
 	uiQuads[nextId] = quad;
 	nextId++;
 
+	delete[] (u8 *) bitmap.pixels;
 	return nextId;
 }
 
