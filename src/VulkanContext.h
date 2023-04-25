@@ -101,6 +101,7 @@ struct VulkanContext {
 	VkCommandPool transientCommandPool;
 
 	VkDescriptorSetLayout globalDescriptorSetLayout;
+	VkDescriptorSetLayout materialDescriptorSetLayout;
 	VkDescriptorSetLayout meshDescriptorSetLayout;
 	VkDescriptorSetLayout uiDescriptorSetLayout;
 
@@ -145,8 +146,7 @@ struct VulkanContext {
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT messageType,
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData
-														);
+		void* pUserData);
 
 	void initWindow();
 
@@ -195,6 +195,7 @@ struct VulkanContext {
 	void createRenderPass();
 
 	void createGlobalDescriptorSetLayout();
+	void createMaterialDescriptorSetLayout();
 	void createMeshDescriptorSetLayout();
 	void createUIDescriptorSetLayout();
 
@@ -244,6 +245,7 @@ struct VulkanContext {
 
 	void createGlobalDescriptorSets();
 
+	void createMaterialDescriptorSets(Material& material);
 	void createMeshUniform(Mesh& mesh);
 	void createUIUniform(UIQuad& quad);
 

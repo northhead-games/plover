@@ -5,6 +5,9 @@
 struct Material {
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+
+	Texture texture;
+	std::vector<VkDescriptorSet> descriptorSets;
 };
 
 struct Vertex {

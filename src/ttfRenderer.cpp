@@ -4,7 +4,7 @@ global_var FT_Library library;
 global_var FT_Face    face;
 
 global_var u8 *fontBuf;
-global_var u64 fontBufSize;
+global_var u32 fontBufSize;
 global_var u8 *GPOSTable;
 
 #define FONT_SCALE 26.6

@@ -7,10 +7,29 @@
 #include "ttfRenderer.h"
 
 #include <windows.h>
-
-using namespace Plover;
+#include <fileapi.h>
 
 global_var Renderer renderer{};
+
+void readFile(const char *path, u8 **buffer, u32 *bufferSize) {
+	HANDLE hFile = CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	*bufferSize = GetFileSize(hFile, (LPDWORD) bufferSize);
+	assert(*bufferSize != NULL);
+
+	*buffer = new u8[sizeof(u8) * (*bufferSize + 1)];
+	assert(ReadFile(hFile, *buffer, *bufferSize, (LPDWORD) bufferSize, NULL));
+	CloseHandle(hFile);
+}
+
+void DEBUG_log(const char *f, ...) {
+	va_list args;
+	va_start(args, f);
+	char str[256];
+	vsprintf_s(str, 256, f, args);
+	OutputDebugStringA(str);
+	va_end(args);
+}
 
 struct win32_GameCode
 {
@@ -37,24 +56,33 @@ internal_func win32_GameCode win32_loadGameCode() {
 
 
 // Handles
-void win32_DEBUG_log(const char *str) {
+void win32_DEBUG_log(const char *f, ...) {
+	va_list args;
+	va_start(args, f);
+	char str[256];
+	vsprintf_s(str, 256, f, args);
 	OutputDebugStringA(str);
+	va_end(args);
 }
 
-MaterialID win32_createMaterial() {
-	return renderer.createMaterial();
+void win32_pushRenderCommand(RenderCommand inCmd) {
+	return renderer.commandQueue.push(inCmd);
 }
 
-MeshID win32_createMesh(const char *path, MaterialID material) {
-	std::string path_str(path);
-	return renderer.loadModel(path_str, material);
+bool win32_hasRenderMessage() {
+	return renderer.messageQueue.hasMessage();
+}
+
+RenderMessage win32_popRenderMessage() {
+	return renderer.messageQueue.pop();
 }
 
 internal_func Handles win32_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = win32_DEBUG_log;
-	handles.createMaterial = win32_createMaterial;
-	handles.createMesh = win32_createMesh;
+	handles.pushRenderCommand = win32_pushRenderCommand;
+	handles.hasRenderMessage = win32_hasRenderMessage;
+	handles.popRenderMessage = win32_popRenderMessage;
 	return handles;
 }
 
@@ -68,10 +96,9 @@ internal_func GameMemory win32_createMemory() {
 	return memory;
 }
 
-internal_func void win32_destroyMemory(GameMemory memory) {
-	VirtualFree(memory.persistentStorage, 0, MEM_RELEASE);
+internal_func void win32_destroyMemory(GameMemory* memory) {
+	VirtualFree(memory->persistentStorage, 0, MEM_RELEASE);
 }
-
 
 int CALLBACK WinMain(
 	HINSTANCE hInstance,
@@ -90,8 +117,10 @@ int CALLBACK WinMain(
 	renderer.init();
 	while (renderer.render()) {
 		game.updateAndRender(&handles, &memory);
+		renderer.processCommands();
 	}
 	renderer.cleanup();
 
+	win32_destroyMemory(&memory);
 	return 0;
 }

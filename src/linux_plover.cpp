@@ -12,7 +12,7 @@ global_var Renderer renderer{};
 
 // OS-Independent Wrappers
 // TODO(oliver): Handle errors instead of just asserting
-void readFile(const char *path, u8 **buffer, u64 *bufferSize) {
+void readFile(const char *path, u8 **buffer, u32 *bufferSize) {
 	FILE *fp = fopen(path, "r");
 	if (fp != NULL) {
 		if (fseek(fp, 0L, SEEK_END) == 0) {
@@ -59,24 +59,24 @@ void linux_DEBUG_log(const char *str) {
 	printf("%s", str);
 }
 
-void linux_pushRenderMessage(RenderMessage inMsg) {
-	return renderer.msgQueue.push(inMsg);
+void linux_pushRenderCommand(RenderCommand inMsg) {
+	return renderer.commandQueue.push(inMsg);
 }
 
-bool linux_hasRenderResult() {
-	return renderer.resultQueue.hasMessage();
+bool linux_hasRenderMessage() {
+	return renderer.messageQueue.hasMessage();
 }
 
-RenderResult linux_popRenderResult() {
-	return renderer.resultQueue.pop();
+RenderResult linux_popRenderMessage() {
+	return renderer.messageQueue.pop();
 }
 
 internal_func Handles linux_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = linux_DEBUG_log;
-	handles.pushRenderMessage = linux_pushRenderMessage;
-	handles.hasRenderResult = linux_hasRenderResult;
-	handles.popRenderResult = linux_popRenderResult;
+	handles.pushRenderCommand = linux_pushRenderCommand;
+	handles.hasRenderMessage = linux_hasRenderMessage;
+	handles.popRenderMessage = linux_popRenderMessage;
 	return handles;
 }
 
@@ -108,7 +108,7 @@ int main() {
 	renderer.init();
 	while (renderer.render()) {
 		game.updateAndRender(&handles, &memory);
-		renderer.processMessages();
+		renderer.processCommands();
 	}
 	renderer.cleanup();
 

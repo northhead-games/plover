@@ -687,6 +687,24 @@ void VulkanContext::createGlobalDescriptorSetLayout() {
 	}
 }
 
+void VulkanContext::createMaterialDescriptorSetLayout() {
+	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+	samplerLayoutBinding.binding = 0;
+	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerLayoutBinding.descriptorCount = 1;
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &samplerLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &materialDescriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("falied to create descriptor set layout!");
+	}
+}
+
 void VulkanContext::createMeshDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding uboLayoutBinding{};
 	uboLayoutBinding.binding = 0;
@@ -931,20 +949,29 @@ void VulkanContext::createUIPipeline() {
 }
 
 size_t VulkanContext::createMaterial() {
-	local_persist size_t nextId = 0;
+	local_persist size_t nextId = 1;
 	Material material{};
 
-	VkDescriptorSetLayout descriptorSetLayouts[2] = { globalDescriptorSetLayout, meshDescriptorSetLayout };
+	VkDescriptorSetLayout descriptorSetLayouts[3] = {
+		globalDescriptorSetLayout,
+		materialDescriptorSetLayout,
+		meshDescriptorSetLayout
+	};
+
 	PipelineCreateInfo createInfo{};
 	createInfo.useDepthBuffer = true;
 	createInfo.doCulling = true;
 	createInfo.subpass = 0; // Forward Rendering Subpass
 	createInfo.vertexShaderPath = "../resources/spirv/vert.spv";
 	createInfo.fragmentShaderPath = "../resources/spirv/frag.spv";
-	createInfo.descriptorSetLayoutCount = 2;
+	createInfo.descriptorSetLayoutCount = 3;
 	createInfo.pDescriptorSetLayouts = descriptorSetLayouts;
 
 	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
+
+	createTextureImage(material.texture, TEXTURE_PATH.c_str());
+	createMaterialDescriptorSets(material);
+
 	size_t id = nextId;
 	materials[id] = material;
 	nextId++;
@@ -1257,6 +1284,29 @@ void VulkanContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
 	endSingleTimeCommands(commandBuffer);
 }
 
+void VulkanContext::createMaterialDescriptorSets(Material& material) {
+	material.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, material.descriptorSets.data(), materialDescriptorSetLayout);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkDescriptorImageInfo imageInfo{};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = material.texture.imageView;
+		imageInfo.sampler = material.texture.sampler;
+
+		VkWriteDescriptorSet descriptorWrite;
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = material.descriptorSets[i];
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pImageInfo = &imageInfo;
+
+		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+	}
+}
+
 void VulkanContext::createMeshUniform(Mesh& mesh) {
 	// Create Uniform Buffer
 	VkDeviceSize bufferSize = sizeof(MeshUniform);
@@ -1328,7 +1378,7 @@ void VulkanContext::createUIUniform(UIQuad& quad) {
 }
 
 size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
-	static size_t nextId = 0;
+	local_persist size_t nextId = 1;
 	Mesh* mesh = new Mesh;
 
 	mesh->vertices = vertices;
@@ -1555,6 +1605,7 @@ void VulkanContext::initVulkan() {
 	createImageViews();
 	createRenderPass();
 	createGlobalDescriptorSetLayout();
+	createMaterialDescriptorSetLayout();
 	createMeshDescriptorSetLayout();
 	createUIDescriptorSetLayout();
 	createUIPipeline();
@@ -1623,7 +1674,8 @@ void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t 
 		vkCmdBindIndexBuffer(commandBuffer, mesh->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 0, 1, &globalDescriptorSets[currentFrame], 0, nullptr);
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 1, 1, &mesh->uniformDescriptorSets[currentFrame], 0, nullptr);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 1, 1, &material.descriptorSets[currentFrame], 0, nullptr);
+		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, material.pipelineLayout, 2, 1, &mesh->uniformDescriptorSets[currentFrame], 0, nullptr);
 		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(mesh->indices.size()), 1, 0, 0, 0);
 	}
 

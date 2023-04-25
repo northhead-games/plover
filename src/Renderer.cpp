@@ -21,10 +21,12 @@ void Renderer::cleanup() {
 	delete this->context;
 }
 
-void Renderer::processMessage(RenderMessage inMsg) {
-	switch (inMsg.tag) {
+void Renderer::processCommand(RenderCommand inCmd) {
+	u32 cmdID = inCmd.id;
+
+	switch (inCmd.tag) {
 		case CREATE_MESH: {
-			CreateMeshData data = inMsg.v.createMesh;
+			CreateMeshData data = inCmd.v.createMesh;
 
 			Mesh mesh;
 
@@ -65,36 +67,31 @@ void Renderer::processMessage(RenderMessage inMsg) {
 				}
 			}
 
-			RenderResult result{MESH_CREATED};
-			result.v.meshCreated.meshID = context->addMesh(
+			RenderMessage message{MESH_CREATED, cmdID};
+			message.v.meshCreated.meshID = context->addMesh(
 				mesh.vertices,
 				mesh.indices,
 				data.materialID);
-			resultQueue.push(result);
+			messageQueue.push(message);
 			break;
 		}
 		case CREATE_MATERIAL: {
-			RenderResult result{MATERIAL_CREATED};
-			result.v.materialCreated.materialID = context->createMaterial();
-			resultQueue.push(result);
+			RenderMessage message{MATERIAL_CREATED, cmdID};
+			message.v.materialCreated.materialID = context->createMaterial();
+			messageQueue.push(message);
+			break;
+		}
+		case SET_MESH_TRANSFORM: {
+			SetMeshTransformData meshTransformData = inCmd.v.setMeshTransform;
+			Mesh* mesh = context->meshes[meshTransformData.meshID];
+			mesh->transform = meshTransformData.transform;
 			break;
 		}
 	}
 }
 
-void Renderer::processMessages() {
-	while (msgQueue.hasMessage()) {
-		processMessage(msgQueue.pop());
+void Renderer::processCommands() {
+	while (commandQueue.hasMessage()) {
+		processCommand(commandQueue.pop());
 	}
 }
-
-// void Renderer::setMeshTransform(MeshID meshId, Transform transform) {
-// 	Mesh* mesh = context->meshes[meshId];
-
-// 	mesh->transform = glm::mat4(1);
-// 	mesh->transform = glm::scale(mesh->transform, { transform.scale.x, transform.scale.y, transform.scale.z });
-// 	mesh->transform = glm::rotate(mesh->transform, transform.rotate.x, { 1.0f, 0.0f, 0.0f });
-// 	mesh->transform = glm::rotate(mesh->transform, transform.rotate.y, { 0.0f, 1.0f, 0.0f });
-// 	mesh->transform = glm::rotate(mesh->transform, transform.rotate.z, { 0.0f, 0.0f, 0.1f });
-// 	mesh->transform = glm::translate(mesh->transform, { transform.translate.x, transform.translate.y, transform.translate.z });
-// }

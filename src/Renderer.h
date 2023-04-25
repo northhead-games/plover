@@ -53,14 +53,14 @@ struct MessageQueue {
 struct Renderer {
 	VulkanContext* context;
 
-	MessageQueue<RenderMessage> msgQueue;
-	MessageQueue<RenderResult> resultQueue;
+	MessageQueue<RenderCommand> commandQueue;
+	MessageQueue<RenderMessage> messageQueue;
 
 	void init();
 	bool render();
 	void cleanup();
 
-	void processMessage(RenderMessage inMsg);
-	void processMessages();
+	void processCommand(RenderCommand inCmd);
+	void processCommands();
 };
 
