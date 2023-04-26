@@ -948,7 +948,7 @@ void VulkanContext::createUIPipeline() {
 	createGraphicsPipeline(createInfo, uiPipeline, uiPipelineLayout);
 }
 
-size_t VulkanContext::createMaterial() {
+size_t VulkanContext::createMaterial(const char *texturePath) {
 	local_persist size_t nextId = 1;
 	Material material{};
 
@@ -969,7 +969,7 @@ size_t VulkanContext::createMaterial() {
 
 	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
 
-	createTextureImage(material.texture, TEXTURE_PATH.c_str());
+	createTextureImage(material.texture, texturePath);
 	createMaterialDescriptorSets(material);
 
 	size_t id = nextId;
@@ -1294,7 +1294,7 @@ void VulkanContext::createMaterialDescriptorSets(Material& material) {
 		imageInfo.imageView = material.texture.imageView;
 		imageInfo.sampler = material.texture.sampler;
 
-		VkWriteDescriptorSet descriptorWrite;
+		VkWriteDescriptorSet descriptorWrite{};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite.dstSet = material.descriptorSets[i];
 		descriptorWrite.dstBinding = 0;

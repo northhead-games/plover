@@ -51,12 +51,17 @@ void Renderer::processCommand(RenderCommand inCmd) {
 						attrib.vertices[3 * index.vertex_index + 2]
 					};
 
+					vertex.normal = {
+						attrib.normals[3 * index.normal_index + 0],
+						attrib.normals[3 * index.normal_index + 1],
+						attrib.normals[3 * index.normal_index + 2]
+					};
+
 					vertex.texCoord = {
 						attrib.texcoords[2 * index.texcoord_index + 0],
 						1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // Flip to conform to OBJ
 					};
 
-					vertex.color = { 1.0f, 1.0f, 1.0f };
 
 					if (uniqueVertices.count(vertex) == 0) {
 						uniqueVertices[vertex] = static_cast<uint32_t>(mesh.vertices.size());
@@ -76,8 +81,11 @@ void Renderer::processCommand(RenderCommand inCmd) {
 			break;
 		}
 		case CREATE_MATERIAL: {
+			CreateMaterialData materialData = inCmd.v.createMaterial;
+			const char *texturePath = materialData.texturePath;
+
 			RenderMessage message{MATERIAL_CREATED, cmdID};
-			message.v.materialCreated.materialID = context->createMaterial();
+			message.v.materialCreated.materialID = context->createMaterial(texturePath);
 			messageQueue.push(message);
 			break;
 		}

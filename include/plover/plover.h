@@ -49,6 +49,10 @@ struct CreateMeshData {
 	u32 materialID;
 };
 
+struct CreateMaterialData {
+	const char *texturePath;
+};
+
 struct SetMeshTransformData {
 	u64 meshID;
 	glm::mat4 transform;
@@ -60,6 +64,7 @@ struct RenderCommand {
 
 	union {
 		CreateMeshData createMesh;
+		CreateMaterialData createMaterial;
 		SetMeshTransformData setMeshTransform;
 	} v;
 };

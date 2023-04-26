@@ -55,8 +55,11 @@ internal_func linux_GameCode linux_loadGameCode() {
 }
 
 // Handles
-void linux_DEBUG_log(const char *str) {
-	printf("%s", str);
+void linux_DEBUG_log(const char *f, ...) {
+	va_list args;
+	va_start(args, f);
+	vprintf(f, args);
+	va_end(args);
 }
 
 void linux_pushRenderCommand(RenderCommand inMsg) {
@@ -67,7 +70,7 @@ bool linux_hasRenderMessage() {
 	return renderer.messageQueue.hasMessage();
 }
 
-RenderResult linux_popRenderMessage() {
+RenderMessage linux_popRenderMessage() {
 	return renderer.messageQueue.pop();
 }
 

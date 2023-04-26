@@ -205,7 +205,7 @@ struct VulkanContext {
 
 	void createUIPipeline();
 
-	size_t createMaterial();
+	size_t createMaterial(const char *texturePath);
 
 	void createFramebuffers();
 
