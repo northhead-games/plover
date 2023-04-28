@@ -688,17 +688,23 @@ void VulkanContext::createGlobalDescriptorSetLayout() {
 }
 
 void VulkanContext::createMaterialDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding layoutBindings[2];
+	layoutBindings[0].binding = 0;
+	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindings[0].descriptorCount = 1;
+	layoutBindings[0].pImmutableSamplers = nullptr;
+	layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	layoutBindings[1].binding = 1;
+	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	layoutBindings[1].descriptorCount = 1;
+	layoutBindings[1].pImmutableSamplers = nullptr;
+	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &samplerLayoutBinding;
+	layoutInfo.bindingCount = 2;
+	layoutInfo.pBindings = layoutBindings;
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &materialDescriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("falied to create descriptor set layout!");
@@ -948,7 +954,7 @@ void VulkanContext::createUIPipeline() {
 	createGraphicsPipeline(createInfo, uiPipeline, uiPipelineLayout);
 }
 
-size_t VulkanContext::createMaterial(const char *texturePath) {
+size_t VulkanContext::createMaterial(const char *texturePath, const char *normalPath) {
 	local_persist size_t nextId = 1;
 	Material material{};
 
@@ -970,6 +976,7 @@ size_t VulkanContext::createMaterial(const char *texturePath) {
 	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
 
 	createTextureImage(material.texture, texturePath);
+	createTextureImage(material.normalTexture, normalPath);
 	createMaterialDescriptorSets(material);
 
 	size_t id = nextId;
@@ -1289,21 +1296,36 @@ void VulkanContext::createMaterialDescriptorSets(Material& material) {
 	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, material.descriptorSets.data(), materialDescriptorSetLayout);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = material.texture.imageView;
-		imageInfo.sampler = material.texture.sampler;
+		VkDescriptorImageInfo texInfo{};
+		texInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		texInfo.imageView = material.texture.imageView;
+		texInfo.sampler = material.texture.sampler;
 
-		VkWriteDescriptorSet descriptorWrite{};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = material.descriptorSets[i];
-		descriptorWrite.dstBinding = 0;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pImageInfo = &imageInfo;
+		VkDescriptorImageInfo nrmInfo{};
+		nrmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		nrmInfo.imageView = material.normalTexture.imageView;
+		nrmInfo.sampler = material.normalTexture.sampler;
 
-		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+		VkWriteDescriptorSet descriptorWrites[2];
+		descriptorWrites[0] = {};
+		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[0].dstSet = material.descriptorSets[i];
+		descriptorWrites[0].dstBinding = 0;
+		descriptorWrites[0].dstArrayElement = 0;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[0].descriptorCount = 1;
+		descriptorWrites[0].pImageInfo = &texInfo;
+
+		descriptorWrites[1] = {};
+		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[1].dstSet = material.descriptorSets[i];
+		descriptorWrites[1].dstBinding = 1;
+		descriptorWrites[1].dstArrayElement = 0;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[1].descriptorCount = 1;
+		descriptorWrites[1].pImageInfo = &nrmInfo;
+
+		vkUpdateDescriptorSets(device, 2, descriptorWrites, 0, nullptr);
 	}
 }
 

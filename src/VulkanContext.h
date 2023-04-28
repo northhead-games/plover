@@ -18,10 +18,10 @@ const uint32_t HEIGHT = 720;
 const std::string TEXTURE_PATH = "../resources/textures/viking_room.png";
 
 const std::vector<Vertex> quadVertices = {
-	{{-0.5, -0.5, 0.0}, {1.0, 0.0, 0.0}, {0.0, 0.0}},
-	{{-0.5,  0.5, 0.0}, {0.0, 1.0, 0.0}, {0.0, 1.0}},
-	{{ 0.5,  0.5, 0.0}, {0.0, 0.0, 1.0}, {1.0, 1.0}},
-	{{ 0.5, -0.5, 0.0}, {1.0, 1.0, 0.0}, {1.0, 0.0}},
+	{{-0.5, -0.5, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 0.0}},
+	{{-0.5,  0.5, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {0.0, 1.0}},
+	{{ 0.5,  0.5, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 1.0}},
+	{{ 0.5, -0.5, 0.0}, {0.0, 0.0, 1.0}, {1.0, 0.0, 0.0}, {1.0, 0.0}},
 };
 
 const std::vector<u32> quadIndices = {0, 1, 2, 0, 2, 3};
@@ -205,7 +205,7 @@ struct VulkanContext {
 
 	void createUIPipeline();
 
-	size_t createMaterial(const char *texturePath);
+	size_t createMaterial(const char *texturePath, const char *normalPath);
 
 	void createFramebuffers();
 

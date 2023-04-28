@@ -42,6 +42,7 @@ void Renderer::processCommand(RenderCommand inCmd) {
 			std::unordered_map<Vertex, uint32_t> uniqueVertices{};
 
 			for (const auto& shape : shapes) {
+				int i = 0;
 				for (const auto& index : shape.mesh.indices) {
 					Vertex vertex{};
 
@@ -57,11 +58,12 @@ void Renderer::processCommand(RenderCommand inCmd) {
 						attrib.normals[3 * index.normal_index + 2]
 					};
 
+					vertex.tangent = {};
+
 					vertex.texCoord = {
 						attrib.texcoords[2 * index.texcoord_index + 0],
 						1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // Flip to conform to OBJ
 					};
-
 
 					if (uniqueVertices.count(vertex) == 0) {
 						uniqueVertices[vertex] = static_cast<uint32_t>(mesh.vertices.size());
@@ -69,6 +71,28 @@ void Renderer::processCommand(RenderCommand inCmd) {
 					}
 
 					mesh.indices.push_back(uniqueVertices[vertex]);
+
+					i++;
+					if ((i % 3) == 0) { // NOTE(oliver): Performed per tri
+						u64 indicesSize = mesh.indices.size();
+						u32 i0 = mesh.indices[indicesSize - 3];
+						u32 i1 = mesh.indices[indicesSize - 2];
+						u32 i2 = mesh.indices[indicesSize - 1];
+						Vertex &v0 = mesh.vertices[i0];
+						Vertex &v1 = mesh.vertices[i1];
+						Vertex &v2 = mesh.vertices[i2];
+
+						glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
+						glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
+						float k = 1 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+						glm::mat2x2 UV(deltaUV2.y, -deltaUV1.y, -deltaUV2.x, deltaUV1.x);
+						glm::mat2x3 E(v1.pos - v0.pos, v2.pos - v0.pos);
+						glm::mat2x3 TB = k*E*UV;
+
+						v0.tangent += TB[0];
+						v1.tangent += TB[0];
+						v2.tangent += TB[0];
+					}
 				}
 			}
 
@@ -83,9 +107,10 @@ void Renderer::processCommand(RenderCommand inCmd) {
 		case CREATE_MATERIAL: {
 			CreateMaterialData materialData = inCmd.v.createMaterial;
 			const char *texturePath = materialData.texturePath;
+			const char *normalPath = materialData.normalPath;
 
 			RenderMessage message{MATERIAL_CREATED, cmdID};
-			message.v.materialCreated.materialID = context->createMaterial(texturePath);
+			message.v.materialCreated.materialID = context->createMaterial(texturePath, normalPath);
 			messageQueue.push(message);
 			break;
 		}
