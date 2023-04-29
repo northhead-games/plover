@@ -26,8 +26,9 @@ const std::vector<Vertex> quadVertices = {
 
 const std::vector<u32> quadIndices = {0, 1, 2, 0, 2, 3};
 
-struct CameraUniformBufferObject {
+struct GlobalUniform {
 	alignas(16) glm::mat4 camera;
+	alignas(16) glm::vec3 cameraPos;
 };
 
 struct QueueFamilyIndices {
@@ -219,7 +220,7 @@ struct VulkanContext {
 
 	void createTexture(TextureCreateInfo info, Texture& texture);
 
-	void createTextureImage(Texture& texture, const char *path);
+	void createTextureImage(Texture& texture, const char *path, BitmapFormat format);
 
 	void createTextureSampler(Texture& texture);
 

@@ -665,7 +665,7 @@ void VulkanContext::createGlobalDescriptorSetLayout() {
 	uboLayoutBinding.binding = 0;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	uboLayoutBinding.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
@@ -975,8 +975,8 @@ size_t VulkanContext::createMaterial(const char *texturePath, const char *normal
 
 	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
 
-	createTextureImage(material.texture, texturePath);
-	createTextureImage(material.normalTexture, normalPath);
+	createTextureImage(material.texture, texturePath, SRGBA8);
+	createTextureImage(material.normalTexture, normalPath, RGBA8);
 	createMaterialDescriptorSets(material);
 
 	size_t id = nextId;
@@ -1152,7 +1152,7 @@ void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
 	createTextureSampler(texture);
 }
 
-void VulkanContext::createTextureImage(Texture& texture, const char *path) {
+void VulkanContext::createTextureImage(Texture& texture, const char *path, BitmapFormat format) {
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
@@ -1164,7 +1164,7 @@ void VulkanContext::createTextureImage(Texture& texture, const char *path) {
 	createInfo.bitmap.pixels = pixels;
 	createInfo.bitmap.width = texWidth;
 	createInfo.bitmap.height = texHeight;
-	createInfo.bitmap.format = RGBA8;
+	createInfo.bitmap.format = format;
 
 	createTexture(createInfo, texture);
 	stbi_image_free(pixels);
@@ -1518,7 +1518,7 @@ void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& b
 }
 
 void VulkanContext::createUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(CameraUniformBufferObject);
+	VkDeviceSize bufferSize = sizeof(GlobalUniform);
 
 	uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 	uniformBuffersAllocations.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1552,33 +1552,20 @@ void VulkanContext::createGlobalDescriptorSets() {
 		VkDescriptorBufferInfo bufferInfo{};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(CameraUniformBufferObject);
+		bufferInfo.range = sizeof(GlobalUniform);
 
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = texture.imageView;
-		imageInfo.sampler = texture.sampler;
+		VkWriteDescriptorSet descriptorWrite;
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = globalDescriptorSets[i];
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = nullptr;
+		descriptorWrite.pTexelBufferView = nullptr;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = globalDescriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
-		descriptorWrites[0].pImageInfo = nullptr;
-		descriptorWrites[0].pTexelBufferView = nullptr;
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = globalDescriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
 	}
 }
 
@@ -1632,7 +1619,6 @@ void VulkanContext::initVulkan() {
 	createUIDescriptorSetLayout();
 	createUIPipeline();
 	createCommandPools();
-	createTextureImage(texture, TEXTURE_PATH.c_str());
 	createDepthResources();
 	createFramebuffers();
 	createUniformBuffers();
@@ -1743,16 +1729,21 @@ void VulkanContext::recreateSwapChain() {
 }
 
 void VulkanContext::updateUniformBuffer(uint32_t currentImage) {
-	CameraUniformBufferObject ubo{};
-	glm::mat4 view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	// Global Uniform
+	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, -4.0f);
+
+	GlobalUniform ubo{};
+	glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	glm::mat4 proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
 
 	proj[1][1] *= -1;
 
 	ubo.camera = proj * view;
+	ubo.cameraPos = cameraPos;
 
 	memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 
+	// Per mesh uniform
 	for (auto kv : meshes) {
 		Mesh* mesh = kv.second;
 
@@ -1857,11 +1848,6 @@ void VulkanContext::cleanupSwapChain() {
 
 void VulkanContext::cleanup() {
 	cleanupSwapChain();
-
-	vkDestroySampler(device, texture.sampler, nullptr);
-	vkDestroyImageView(device, texture.imageView, nullptr);
-
-	allocator.destroyImage(texture.image, texture.allocation);
 
 	vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device, meshDescriptorSetLayout, nullptr);

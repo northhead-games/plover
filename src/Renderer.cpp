@@ -62,7 +62,7 @@ void Renderer::processCommand(RenderCommand inCmd) {
 
 					vertex.texCoord = {
 						attrib.texcoords[2 * index.texcoord_index + 0],
-						1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // Flip to conform to OBJ
+						1.0f - attrib.texcoords[2 * index.texcoord_index + 1] // NOTE(oliver): Flip to conform to OBJ
 					};
 
 					if (uniqueVertices.count(vertex) == 0) {
@@ -81,17 +81,28 @@ void Renderer::processCommand(RenderCommand inCmd) {
 						Vertex &v0 = mesh.vertices[i0];
 						Vertex &v1 = mesh.vertices[i1];
 						Vertex &v2 = mesh.vertices[i2];
+						glm::vec3 v0v1 = v1.pos - v0.pos;
+						glm::vec3 v0v2 = v2.pos - v0.pos;
 
 						glm::vec2 deltaUV1 = v1.texCoord - v0.texCoord;
 						glm::vec2 deltaUV2 = v2.texCoord - v0.texCoord;
 						float k = 1 / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-						glm::mat2x2 UV(deltaUV2.y, -deltaUV1.y, -deltaUV2.x, deltaUV1.x);
-						glm::mat2x3 E(v1.pos - v0.pos, v2.pos - v0.pos);
-						glm::mat2x3 TB = k*E*UV;
 
-						v0.tangent += TB[0];
-						v1.tangent += TB[0];
-						v2.tangent += TB[0];
+						glm::vec3 tangent = glm::vec3(
+							k * (deltaUV2.y * v0v1.x - deltaUV1.y * v0v2.x),
+							k * (deltaUV2.y * v0v1.y - deltaUV1.y * v0v2.y),
+							k * (deltaUV2.y * v0v1.z - deltaUV1.y * v0v2.z));
+
+						v0.tangent = tangent;
+						v1.tangent = tangent;
+						v2.tangent = tangent;
+						// glm::mat2x2 UV(deltaUV2.y, -deltaUV1.y, -deltaUV2.x, deltaUV1.x);
+						// glm::mat2x3 E(v1.pos - v0.pos, v2.pos - v0.pos);
+						// glm::mat2x3 TB = k*E*UV;
+
+						// v0.tangent += TB[0];
+						// v1.tangent += TB[0];
+						// v2.tangent += TB[0];
 					}
 				}
 			}

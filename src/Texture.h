@@ -5,6 +5,7 @@
 enum BitmapFormat {
 	G8, // 8-bit gray
 	RGBA8, // 8-bit rgba
+	SRGBA8, // 8-bit srgba
 };
 
 struct Bitmap {
@@ -19,24 +20,24 @@ struct Bitmap {
 				return 1;
 			case RGBA8:
 				return 4;
+			case SRGBA8:
+				return 4;
 		}
 	}
 
 	inline VkFormat vulkanFormat() {
 		switch (format) {
 			case G8:
-				return VK_FORMAT_R8_SRGB;
+				return VK_FORMAT_R8_UNORM;
 			case RGBA8:
+				return VK_FORMAT_R8G8B8A8_UNORM;
+			case SRGBA8:
 				return VK_FORMAT_R8G8B8A8_SRGB;
 		}
 	}
 
 	inline u32 index(u32 x, u32 y) {
-		u8 stride = 1;
-		if (format == RGBA8) {
-			stride = 4;
-		}
-		return (y * width + x) * stride;
+		return (y * width + x) * stride();
 	}
 
 	void writeGrayscale(u8 value, u32 x, u32 y);
