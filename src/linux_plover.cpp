@@ -3,12 +3,11 @@
 #include "Renderer.h"
 #include "ttfRenderer.h"
 
+#include "plover.cpp"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
-
-// Globals
-global_var Renderer renderer{};
 
 // OS-Independent Wrappers
 // TODO(oliver): Handle errors instead of just asserting
@@ -62,24 +61,13 @@ void linux_DEBUG_log(const char *f, ...) {
 	va_end(args);
 }
 
-void linux_pushRenderCommand(RenderCommand inMsg) {
-	return renderer.commandQueue.push(inMsg);
-}
-
-bool linux_hasRenderMessage() {
-	return renderer.messageQueue.hasMessage();
-}
-
-RenderMessage linux_popRenderMessage() {
-	return renderer.messageQueue.pop();
-}
-
 internal_func Handles linux_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = linux_DEBUG_log;
-	handles.pushRenderCommand = linux_pushRenderCommand;
-	handles.hasRenderMessage = linux_hasRenderMessage;
-	handles.popRenderMessage = linux_popRenderMessage;
+	handles.isKeyDown = isKeyDown;
+	handles.pushRenderCommand = pushRenderCommand;
+	handles.hasRenderMessage = hasRenderMessage;
+	handles.popRenderMessage = popRenderMessage;
 	return handles;
 }
 
@@ -110,6 +98,7 @@ int main() {
 
 	renderer.init();
 	while (renderer.render()) {
+		memory.mousePosition = mousePosition;
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
 	}

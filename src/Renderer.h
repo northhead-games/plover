@@ -1,8 +1,7 @@
 #pragma once
 
 #include "includes.h"
-
-struct VulkanContext;
+#include "VulkanContext.h"
 
 struct Transform {
 	struct Translate {

@@ -38,11 +38,18 @@ typedef float    f32;
 #define Megabytes(mb) ((uint64_t) mb * 1024 * 1024)
 #define Gigabytes(gb) ((uint64_t) gb * 1024 * 1024 * 1024)
 
+#define PI      3.14159265358979
+#define HALF_PI 1.57079632679489
+
 #include "render.h"
+#include "input.h"
 
 // NOTE(oliver): engine handles
 struct Handles {
 	void (*DEBUG_log)(const char *, ...);
+
+	// Input
+	bool (*isKeyDown)(Key);
 
 	// Rendering
 	void (*pushRenderCommand)(RenderCommand);
@@ -52,6 +59,7 @@ struct Handles {
 
 struct GameMemory {
 	bool initialized;
+	glm::vec2 mousePosition;
 
 	u64   persistentStorageSize;
 	void *persistentStorage;

@@ -17,6 +17,10 @@ void VulkanContext::initWindow() {
 	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+	// Setup cursor capture
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetCursorPosCallback(window, mouseCallback);
 }
 
 void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -1627,7 +1631,7 @@ void VulkanContext::initVulkan() {
 	createCommandBuffer();
 	createSyncObjects();
 
-	addUIQuad();
+	// addUIQuad();
 }
 
 void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -1730,16 +1734,18 @@ void VulkanContext::recreateSwapChain() {
 
 void VulkanContext::updateUniformBuffer(uint32_t currentImage) {
 	// Global Uniform
-	glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, -4.0f);
-
 	GlobalUniform ubo{};
-	glm::mat4 view = glm::lookAt(cameraPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	glm::mat4 proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+	glm::mat4 view = glm::lookAt(camera.position, camera.position - camera.direction, glm::vec3(0.0f, 1.0f, 0.0f));
+	glm::mat4 proj = glm::perspective(
+		glm::radians(45.0f), // FOV
+		swapChainExtent.width / (float)swapChainExtent.height, // Aspect ratio
+		0.1f, // Near clip
+		100.0f); // Far clip
 
 	proj[1][1] *= -1;
 
 	ubo.camera = proj * view;
-	ubo.cameraPos = cameraPos;
+	ubo.cameraPos = camera.position;
 
 	memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
 

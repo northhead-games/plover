@@ -6,10 +6,10 @@
 #include "Renderer.h"
 #include "ttfRenderer.h"
 
+#include "plover.cpp"
+
 #include <windows.h>
 #include <fileapi.h>
-
-global_var Renderer renderer{};
 
 void readFile(const char *path, u8 **buffer, u32 *bufferSize) {
 	HANDLE hFile = CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -65,24 +65,12 @@ void win32_DEBUG_log(const char *f, ...) {
 	va_end(args);
 }
 
-void win32_pushRenderCommand(RenderCommand inCmd) {
-	return renderer.commandQueue.push(inCmd);
-}
-
-bool win32_hasRenderMessage() {
-	return renderer.messageQueue.hasMessage();
-}
-
-RenderMessage win32_popRenderMessage() {
-	return renderer.messageQueue.pop();
-}
-
 internal_func Handles win32_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = win32_DEBUG_log;
-	handles.pushRenderCommand = win32_pushRenderCommand;
-	handles.hasRenderMessage = win32_hasRenderMessage;
-	handles.popRenderMessage = win32_popRenderMessage;
+	handles.pushRenderCommand = pushRenderCommand;
+	handles.hasRenderMessage = hasRenderMessage;
+	handles.popRenderMessage = popRenderMessage;
 	return handles;
 }
 

@@ -131,6 +131,11 @@ void Renderer::processCommand(RenderCommand inCmd) {
 			mesh->transform = meshTransformData.transform;
 			break;
 		}
+		case SET_CAMERA: {
+			SetCameraData cameraData = inCmd.v.setCamera;
+			context->camera = cameraData.camera;
+			break;
+		}
 	}
 }
 

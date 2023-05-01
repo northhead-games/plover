@@ -111,6 +111,8 @@ struct VulkanContext {
 	VkPipeline uiPipeline;
 	VkPipelineLayout uiPipelineLayout;
 
+	Camera camera;
+
 	std::unordered_map<size_t, Mesh*> meshes;
 	std::unordered_map<size_t, UIQuad> uiQuads;
 	std::unordered_map<size_t, Material> materials;

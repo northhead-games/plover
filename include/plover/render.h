@@ -1,7 +1,13 @@
+struct Camera {
+	glm::vec3 position;
+	glm::vec3 direction;
+};
+
 enum RenderCommandTag {
 	CREATE_MESH,
 	CREATE_MATERIAL,
 	SET_MESH_TRANSFORM,
+	SET_CAMERA,
 };
 
 struct CreateMeshData {
@@ -19,6 +25,10 @@ struct SetMeshTransformData {
 	glm::mat4 transform;
 };
 
+struct SetCameraData {
+	Camera camera;
+};
+
 struct RenderCommand {
 	RenderCommandTag tag;
 	u32 id; // NOTE(oliver): Related output messages will have this ID
@@ -27,6 +37,7 @@ struct RenderCommand {
 		CreateMeshData createMesh;
 		CreateMaterialData createMaterial;
 		SetMeshTransformData setMeshTransform;
+		SetCameraData setCamera;
 	} v;
 };
 
