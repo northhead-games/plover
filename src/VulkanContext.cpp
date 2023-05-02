@@ -18,9 +18,13 @@ void VulkanContext::initWindow() {
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
-	// Setup cursor capture
+	// Cursor capture
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetCursorPosCallback(window, mouseCallback);
+
+	// Input callbacks
+	glfwSetKeyCallback(window, keyCallback);
+	glfwSetMouseButtonCallback(window, clickCallback);
 }
 
 void VulkanContext::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -74,7 +78,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::debugCallback(
 	void* pUserData
 ) {
 	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+		DEBUG_log("validation layer: %s\n", pCallbackData->pMessage);
 	}
 
 	return VK_FALSE;
@@ -1558,7 +1562,7 @@ void VulkanContext::createGlobalDescriptorSets() {
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(GlobalUniform);
 
-		VkWriteDescriptorSet descriptorWrite;
+		VkWriteDescriptorSet descriptorWrite{};
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrite.dstSet = globalDescriptorSets[i];
 		descriptorWrite.dstBinding = 0;
@@ -1856,6 +1860,7 @@ void VulkanContext::cleanup() {
 	cleanupSwapChain();
 
 	vkDestroyDescriptorSetLayout(device, globalDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device, materialDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device, meshDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(device, uiDescriptorSetLayout, nullptr);
 
@@ -1885,8 +1890,17 @@ void VulkanContext::cleanup() {
 
 	for (const auto& kv : materials) {
 		Material material = kv.second;
+
 		vkDestroyPipeline(device, material.pipeline, nullptr);
 		vkDestroyPipelineLayout(device, material.pipelineLayout, nullptr);
+
+		vkDestroySampler(device, material.texture.sampler, nullptr);
+		vkDestroyImageView(device, material.texture.imageView, nullptr);
+		allocator.destroyImage(material.texture.image, material.texture.allocation);
+
+		vkDestroySampler(device, material.normalTexture.sampler, nullptr);
+		vkDestroyImageView(device, material.normalTexture.imageView, nullptr);
+		allocator.destroyImage(material.normalTexture.image, material.normalTexture.allocation);
 	}
 
 	vkDestroyPipeline(device, uiPipeline, nullptr);

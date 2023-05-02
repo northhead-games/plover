@@ -25,8 +25,8 @@ void readFile(const char *path, u8 **buffer, u32 *bufferSize) {
 void DEBUG_log(const char *f, ...) {
 	va_list args;
 	va_start(args, f);
-	char str[256];
-	vsprintf_s(str, 256, f, args);
+	char str[1024];
+	vsprintf_s(str, 1024, f, args);
 	OutputDebugStringA(str);
 	va_end(args);
 }
@@ -54,20 +54,10 @@ internal_func win32_GameCode win32_loadGameCode() {
 	return result;
 }
 
-
-// Handles
-void win32_DEBUG_log(const char *f, ...) {
-	va_list args;
-	va_start(args, f);
-	char str[256];
-	vsprintf_s(str, 256, f, args);
-	OutputDebugStringA(str);
-	va_end(args);
-}
-
 internal_func Handles win32_createHandles() {
 	Handles handles{};
-	handles.DEBUG_log = win32_DEBUG_log;
+	handles.DEBUG_log = DEBUG_log;
+	handles.isKeyDown = isKeyDown;
 	handles.pushRenderCommand = pushRenderCommand;
 	handles.hasRenderMessage = hasRenderMessage;
 	handles.popRenderMessage = popRenderMessage;
@@ -104,6 +94,7 @@ int CALLBACK WinMain(
 
 	renderer.init();
 	while (renderer.render()) {
+		memory.mousePosition = mousePosition;
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
 	}
