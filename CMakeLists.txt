@@ -29,7 +29,7 @@ add_executable(${PROJECT_NAME} ${WIN32_MAIN} ${MAIN_FILE} "src/Renderer.cpp" "sr
 if (WIN32)
     add_custom_command(TARGET ${PROJECT_NAME}
 	POST_BUILD
-	COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/libraries/dlls/freetype.dll ${CMAKE_CURRENT_BINARY_DIR}/.
+	COMMAND ${CMAKE_COMMAND} -E copy "C:/NorthheadDeps/lib/freetype.dll" ${CMAKE_CURRENT_BINARY_DIR}/.
     )
 endif ()
 
