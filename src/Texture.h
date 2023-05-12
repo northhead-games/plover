@@ -2,6 +2,8 @@
 
 #include "includes.h"
 
+struct VulkanContext;
+
 enum BitmapFormat {
 	G8, // 8-bit gray
 	RGBA8, // 8-bit rgba
@@ -52,5 +54,9 @@ struct Texture {
 	VmaAllocation allocation;
 	VkImageView imageView;
 	VkSampler sampler;
+
+	void cleanup(VulkanContext& context);
 };
 
+void createTexture(VulkanContext& context, TextureCreateInfo info, Texture& texture);
+void createImageTexture(VulkanContext& context, Texture &texture, const char *path, BitmapFormat format);

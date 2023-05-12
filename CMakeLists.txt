@@ -24,7 +24,7 @@ find_package(Freetype REQUIRED)
 message(STATUS ${PROJECT_NAME})
 message(STATUS ${FREETYPE_LIBRARIES})
 
-add_executable(${PROJECT_NAME} ${WIN32_MAIN} ${MAIN_FILE} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/VulkanAllocator.h" "src/VulkanAllocator.cpp" src/Mesh.h "src/DescriptorAllocator.h" "src/DescriptorAllocator.cpp" "src/Mesh.cpp" "include/plover/plover.h" "src/ttfRenderer.cpp" "src/ttfRenderer.h" "src/Texture.h" "src/Texture.cpp" "src/plover_int.h")
+add_executable(${PROJECT_NAME} ${WIN32_MAIN} ${MAIN_FILE} "src/Renderer.cpp" "src/includes.h" "src/VulkanContext.h" "src/VulkanContext.cpp" "src/DescriptorAllocator.h" "src/DescriptorAllocator.cpp" "src/Mesh.h" "src/Mesh.cpp" "src/Material.h" "src/Material.cpp" "include/plover/plover.h" "src/ttfRenderer.cpp" "src/ttfRenderer.h" "src/Texture.h" "src/Texture.cpp" "src/plover_int.h" "src/UI.h" "src/UI.cpp")
 
 if (WIN32)
     add_custom_command(TARGET ${PROJECT_NAME}

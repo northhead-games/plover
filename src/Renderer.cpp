@@ -1,7 +1,9 @@
 #include "Renderer.h"
 
-#include "VulkanContext.h"
 #include "includes.h"
+#include "VulkanContext.h"
+#include "Mesh.h"
+#include "UI.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <obj/tiny_obj_loader.h>
@@ -10,6 +12,7 @@ void Renderer::init() {
 	context = new VulkanContext;
 	context->initWindow();
 	context->initVulkan();
+	createUIQuad(*context);
 }
 
 bool Renderer::render() {
@@ -108,7 +111,8 @@ void Renderer::processCommand(RenderCommand inCmd) {
 			}
 
 			RenderMessage message{MESH_CREATED, cmdID};
-			message.v.meshCreated.meshID = context->addMesh(
+			message.v.meshCreated.meshID = createMesh(
+				*context,
 				mesh.vertices,
 				mesh.indices,
 				data.materialID);
@@ -121,7 +125,7 @@ void Renderer::processCommand(RenderCommand inCmd) {
 			const char *normalPath = materialData.normalPath;
 
 			RenderMessage message{MATERIAL_CREATED, cmdID};
-			message.v.materialCreated.materialID = context->createMaterial(texturePath, normalPath);
+			message.v.materialCreated.materialID = createMaterial(*context, texturePath, normalPath);
 			messageQueue.push(message);
 			break;
 		}

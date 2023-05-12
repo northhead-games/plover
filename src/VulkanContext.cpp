@@ -1,20 +1,23 @@
 #include "VulkanContext.h"
-#include "VulkanAllocator.h"
 
 #include "includes.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnullability-completeness"
+#define VMA_IMPLEMENTATION
+#include <vma/vk_mem_alloc.h>
+#pragma clang diagnostic pop
 
 void VulkanContext::initWindow() {
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
 	// NOTE(oliver): We'll work with a static aspect ratio for now
 	// glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(WIDTH, HEIGHT, "ProjectG", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
@@ -151,7 +154,6 @@ bool VulkanContext::checkValidationLayerSupport() {
 	return true;
 }
 
-
 // Proxy function
 VkResult CreateDebugUtilsMessengerEXT(
 	VkInstance instance,
@@ -202,7 +204,6 @@ void VulkanContext::setupDebugMessenger() {
 		throw std::runtime_error("failed to set up debug messenger!");
 	}
 }
-
 
 QueueFamilyIndices VulkanContext::findQueueFamilies(VkPhysicalDevice currentDevice) {
 	QueueFamilyIndices indices;
@@ -405,7 +406,49 @@ void VulkanContext::initAllocator()
 	allocatorInfo.device = device;
 	allocatorInfo.instance = instance;
 
-	allocator.init(this, allocatorInfo);
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
+	vmaCreateAllocator(&allocatorInfo, &allocator);
+}
+
+void VulkanContext::createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, VmaAllocation& bufferAllocation) {
+  VkBufferCreateInfo bufferInfo{};
+  bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  bufferInfo.size = createInfo.size;
+  bufferInfo.usage = createInfo.usage;
+  bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  VmaAllocationCreateInfo allocCreateInfo = {};
+  allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+  allocCreateInfo.requiredFlags = createInfo.properties;
+  allocCreateInfo.flags = createInfo.vmaFlags;
+
+  vmaCreateBuffer(allocator, &bufferInfo, &allocCreateInfo, &buffer, &bufferAllocation, nullptr);
+}
+
+void VulkanContext::createImage(CreateImageInfo createImage, VkImage& image, VmaAllocation& imageAllocation)
+{
+	VkImageCreateInfo imageInfo{};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = createImage.width;
+	imageInfo.extent.height = createImage.height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = createImage.format;
+	imageInfo.tiling = createImage.tiling;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = createImage.usage;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	VmaAllocationCreateInfo allocCreateInfo = {};
+	allocCreateInfo.usage = VMA_MEMORY_USAGE_AUTO;
+	allocCreateInfo.requiredFlags = createImage.properties;
+	allocCreateInfo.flags = createImage.vmaFlags;
+
+	vmaCreateImage(allocator, &imageInfo, &allocCreateInfo, &image, &imageAllocation, nullptr);
 }
 
 void VulkanContext::createSurface() {
@@ -695,66 +738,6 @@ void VulkanContext::createGlobalDescriptorSetLayout() {
 	}
 }
 
-void VulkanContext::createMaterialDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding layoutBindings[2];
-	layoutBindings[0].binding = 0;
-	layoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[0].descriptorCount = 1;
-	layoutBindings[0].pImmutableSamplers = nullptr;
-	layoutBindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	layoutBindings[1].binding = 1;
-	layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	layoutBindings[1].descriptorCount = 1;
-	layoutBindings[1].pImmutableSamplers = nullptr;
-	layoutBindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 2;
-	layoutInfo.pBindings = layoutBindings;
-
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &materialDescriptorSetLayout) != VK_SUCCESS) {
-		throw std::runtime_error("falied to create descriptor set layout!");
-	}
-}
-
-void VulkanContext::createMeshDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding uboLayoutBinding{};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &uboLayoutBinding;
-
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &meshDescriptorSetLayout) != VK_SUCCESS) {
-		throw std::runtime_error("falied to create descriptor set layout!");
-	}
-}
-
-void VulkanContext::createUIDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 0;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &samplerLayoutBinding;
-
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &uiDescriptorSetLayout) != VK_SUCCESS) {
-		throw std::runtime_error("falied to create ui descriptor set layout!");
-	}
-}
-
 VkShaderModule VulkanContext::createShaderModule(const std::vector<char>& code) {
 	VkShaderModuleCreateInfo createInfo{};
 
@@ -949,51 +932,6 @@ void VulkanContext::createGraphicsPipeline(PipelineCreateInfo info, VkPipeline& 
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
-void VulkanContext::createUIPipeline() {
-	PipelineCreateInfo createInfo{};
-	createInfo.useDepthBuffer = false;
-	createInfo.doCulling = true;
-	createInfo.subpass = 1; // UI Subpass
-	createInfo.vertexShaderPath = "../resources/spirv/ui_vert.spv";
-	createInfo.fragmentShaderPath = "../resources/spirv/ui_frag.spv";
-	createInfo.descriptorSetLayoutCount = 1;
-	createInfo.pDescriptorSetLayouts = &uiDescriptorSetLayout;
-
-	createGraphicsPipeline(createInfo, uiPipeline, uiPipelineLayout);
-}
-
-size_t VulkanContext::createMaterial(const char *texturePath, const char *normalPath) {
-	local_persist size_t nextId = 1;
-	Material material{};
-
-	VkDescriptorSetLayout descriptorSetLayouts[3] = {
-		globalDescriptorSetLayout,
-		materialDescriptorSetLayout,
-		meshDescriptorSetLayout
-	};
-
-	PipelineCreateInfo createInfo{};
-	createInfo.useDepthBuffer = true;
-	createInfo.doCulling = true;
-	createInfo.subpass = 0; // Forward Rendering Subpass
-	createInfo.vertexShaderPath = "../resources/spirv/vert.spv";
-	createInfo.fragmentShaderPath = "../resources/spirv/frag.spv";
-	createInfo.descriptorSetLayoutCount = 3;
-	createInfo.pDescriptorSetLayouts = descriptorSetLayouts;
-
-	createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
-
-	createTextureImage(material.texture, texturePath, SRGBA8);
-	createTextureImage(material.normalTexture, normalPath, RGBA8);
-	createMaterialDescriptorSets(material);
-
-	size_t id = nextId;
-	materials[id] = material;
-	nextId++;
-
-	return id;
-}
-
 void VulkanContext::createFramebuffers() {
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
@@ -1119,94 +1057,6 @@ void VulkanContext::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t w
 	endSingleTimeCommands(commandBuffer);
 }
 
-void VulkanContext::createTexture(TextureCreateInfo info, Texture& texture) {
-	VkDeviceSize imageSize = info.bitmap.width * info.bitmap.height * info.bitmap.stride();
-	VkFormat format = info.bitmap.vulkanFormat();
-
-	VkBuffer stagingBuffer;
-	VmaAllocation stagingBufferAllocation;
-
-	CreateBufferInfo stagingCreateInfo{};
-	stagingCreateInfo.size = imageSize;
-	stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
-
-	void* data;
-	allocator.mapMemory(stagingBufferAllocation, &data);
-	memcpy(data, info.bitmap.pixels, static_cast<size_t>(imageSize));
-	allocator.unmapMemory(stagingBufferAllocation);
-
-	CreateImageInfo createInfo{};
-	createInfo.width = info.bitmap.width;
-	createInfo.height = info.bitmap.height;
-	createInfo.format = format;
-	createInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	createInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	createInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
-	allocator.createImage(createInfo, texture.image, texture.allocation);
-
-	// TODO(oliver): These all create and submit a new command buffer.  Should change this to use a single command buffer
-	transitionImageLayout(texture.image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, texture.image, static_cast<uint32_t>(info.bitmap.width), static_cast<uint32_t>(info.bitmap.height));
-	transitionImageLayout(texture.image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
-
-	texture.imageView = createImageView(texture.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
-	createTextureSampler(texture);
-}
-
-void VulkanContext::createTextureImage(Texture& texture, const char *path, BitmapFormat format) {
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
-	}
-
-	TextureCreateInfo createInfo{};
-	createInfo.bitmap.pixels = pixels;
-	createInfo.bitmap.width = texWidth;
-	createInfo.bitmap.height = texHeight;
-	createInfo.bitmap.format = format;
-
-	createTexture(createInfo, texture);
-	stbi_image_free(pixels);
-}
-
-void VulkanContext::createTextureSampler(Texture& texture) {
-	VkPhysicalDeviceFeatures supportedFeatures;
-	vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
-	VkPhysicalDeviceProperties properties{};
-	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-
-	VkSamplerCreateInfo samplerInfo{};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	if (supportedFeatures.samplerAnisotropy == VK_TRUE) {
-		samplerInfo.anisotropyEnable = VK_TRUE;
-		samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-	}
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &(texture.sampler)) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
-	}
-}
 
 VkFormat VulkanContext::findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
 {
@@ -1250,7 +1100,7 @@ void VulkanContext::createDepthResources() {
 	imageInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	imageInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
 
-	allocator.createImage(imageInfo, depthImage, depthImageAllocation);
+	createImage(imageInfo, depthImage, depthImageAllocation);
 	depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
@@ -1299,232 +1149,6 @@ void VulkanContext::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceS
 	endSingleTimeCommands(commandBuffer);
 }
 
-void VulkanContext::createMaterialDescriptorSets(Material& material) {
-	material.descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, material.descriptorSets.data(), materialDescriptorSetLayout);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorImageInfo texInfo{};
-		texInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		texInfo.imageView = material.texture.imageView;
-		texInfo.sampler = material.texture.sampler;
-
-		VkDescriptorImageInfo nrmInfo{};
-		nrmInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		nrmInfo.imageView = material.normalTexture.imageView;
-		nrmInfo.sampler = material.normalTexture.sampler;
-
-		VkWriteDescriptorSet descriptorWrites[2];
-		descriptorWrites[0] = {};
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = material.descriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pImageInfo = &texInfo;
-
-		descriptorWrites[1] = {};
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = material.descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &nrmInfo;
-
-		vkUpdateDescriptorSets(device, 2, descriptorWrites, 0, nullptr);
-	}
-}
-
-void VulkanContext::createMeshUniform(Mesh& mesh) {
-	// Create Uniform Buffer
-	VkDeviceSize bufferSize = sizeof(MeshUniform);
-
-	mesh.uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-	mesh.uniformBufferAllocations.resize(MAX_FRAMES_IN_FLIGHT);
-	mesh.uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		CreateBufferInfo createInfo{};
-		createInfo.size = bufferSize;
-		createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		createInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		createInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT);
-
-		VmaAllocationInfo allocInfo = {};
-		allocator.createBuffer(createInfo, mesh.uniformBuffers[i], mesh.uniformBufferAllocations[i]);
-		allocator.getAllocationInfo(mesh.uniformBufferAllocations[i], allocInfo);
-		mesh.uniformBuffersMapped[i] = allocInfo.pMappedData;
-	}
-
-	// Create Uniform Descriptor Set
-	mesh.uniformDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, mesh.uniformDescriptorSets.data(), meshDescriptorSetLayout);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = mesh.uniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(MeshUniform);
-
-		VkWriteDescriptorSet descriptorWrite{};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = mesh.uniformDescriptorSets[i];
-		descriptorWrite.dstBinding = 0;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pBufferInfo = &bufferInfo;
-		descriptorWrite.pImageInfo = nullptr;
-		descriptorWrite.pTexelBufferView = nullptr;
-
-		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-	}
-}
-
-void VulkanContext::createUIUniform(UIQuad& quad) {
-	quad.uniformDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-	descriptorAllocator.allocate(MAX_FRAMES_IN_FLIGHT, quad.uniformDescriptorSets.data(), uiDescriptorSetLayout);
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorImageInfo imageInfo{};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = quad.texture.imageView;
-		imageInfo.sampler = quad.texture.sampler;
-
-		VkWriteDescriptorSet descriptorWrite{};
-		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrite.dstSet = quad.uniformDescriptorSets[i];
-		descriptorWrite.dstBinding = 0;
-		descriptorWrite.dstArrayElement = 0;
-		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrite.descriptorCount = 1;
-		descriptorWrite.pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
-	}
-}
-
-size_t VulkanContext::addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId) {
-	local_persist size_t nextId = 1;
-	Mesh* mesh = new Mesh;
-
-	mesh->vertices = vertices;
-	mesh->indices = indices;
-	createVertexBuffer(vertices, mesh->vertexBuffer, mesh->vertexAllocation);
-	createIndexBuffer(indices, mesh->indexBuffer, mesh->indexAllocation);
-	createMeshUniform(*mesh);
-	mesh->materialId = materialId;
-
-	mesh->transform = glm::translate(glm::mat4(1), glm::vec3(0, 0, 0));
-	size_t id = nextId;
-	meshes[id] = mesh;
-	nextId++;
-
-	return id;
-}
-
-size_t VulkanContext::addUIQuad() {
-	static size_t nextId = 0;
-	UIQuad quad{};
-
-	Bitmap bitmap{};
-	bitmap.width = 640;
-	bitmap.height = 360;
-	bitmap.pixels = new u8[bitmap.width * bitmap.height * 4] { 0 };
-	bitmap.format = RGBA8;
-
-	TextureCreateInfo createInfo{};
-	createInfo.bitmap = bitmap;
-
-	for (int x = 0; x < bitmap.width; x++) {
-		for (int y = 0; y < bitmap.height; y++) {
-			if (x < 4 ||
-				x > bitmap.width - 4 ||
-				y < 4 ||
-				y > bitmap.height - 4) {
-
-				bitmap.writeGrayscale(255, x, y);
-			}
-		}
-	}
-
-	drawGlyphs("AvAvAv WoWo The Quick Brown Fox Jumped Over The Lazy Dog", bitmap);
-	createTexture(createInfo, quad.texture);
-	createVertexBuffer(quadVertices, quad.vertexBuffer, quad.vertexAllocation);
-	createIndexBuffer(quadIndices, quad.indexBuffer, quad.indexAllocation);
-	createUIUniform(quad);
-
-	uiQuads[nextId] = quad;
-	nextId++;
-
-	delete[] (u8 *) bitmap.pixels;
-	return nextId;
-}
-
-void VulkanContext::createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation)
-{
-	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-
-	CreateBufferInfo stagingCreateInfo{};
-	stagingCreateInfo.size = bufferSize;
-	stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-	VkBuffer stagingBuffer;
-	VmaAllocation stagingBufferAllocation;
-	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
-
-	void* data;
-	allocator.mapMemory(stagingBufferAllocation, &data);
-	memcpy(data, vertices.data(), (size_t)bufferSize);
-	allocator.unmapMemory(stagingBufferAllocation);
-
-	CreateBufferInfo vertexCreateInfo{};
-	vertexCreateInfo.size = bufferSize;
-	vertexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	vertexCreateInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
-	allocator.createBuffer(vertexCreateInfo, buffer, allocation);
-
-	copyBuffer(stagingBuffer, buffer, bufferSize);
-	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
-}
-
-void VulkanContext::createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, VmaAllocation& allocation)
-{
-	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-	CreateBufferInfo stagingCreateInfo{};
-	stagingCreateInfo.size = bufferSize;
-	stagingCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	stagingCreateInfo.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	stagingCreateInfo.vmaFlags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-
-	VkBuffer stagingBuffer;
-	VmaAllocation stagingBufferAllocation;
-	allocator.createBuffer(stagingCreateInfo, stagingBuffer, stagingBufferAllocation);
-
-	void* data;
-	allocator.mapMemory(stagingBufferAllocation, &data);
-	memcpy(data, indices.data(), (size_t)bufferSize);
-	allocator.unmapMemory(stagingBufferAllocation);
-
-	CreateBufferInfo indexCreateInfo{};
-	indexCreateInfo.size = bufferSize;
-	indexCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	indexCreateInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	indexCreateInfo.vmaFlags = static_cast<VmaAllocationCreateFlagBits>(0);
-	allocator.createBuffer(indexCreateInfo, buffer, allocation);
-
-	copyBuffer(stagingBuffer, buffer, bufferSize);
-
-	allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
-}
-
 void VulkanContext::createUniformBuffers() {
 	VkDeviceSize bufferSize = sizeof(GlobalUniform);
 
@@ -1542,8 +1166,8 @@ void VulkanContext::createUniformBuffers() {
 
 		//TODO Fix Persistent mapping
 		VmaAllocationInfo allocInfo = {};
-		allocator.createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocations[i]);
-		allocator.getAllocationInfo(uniformBuffersAllocations[i], allocInfo);
+		createBuffer(createInfo, uniformBuffers[i], uniformBuffersAllocations[i]);
+		vmaGetAllocationInfo(allocator, uniformBuffersAllocations[i], &allocInfo);
 		uniformBuffersMapped[i] = allocInfo.pMappedData;
 	}
 }
@@ -1622,10 +1246,10 @@ void VulkanContext::initVulkan() {
 	createImageViews();
 	createRenderPass();
 	createGlobalDescriptorSetLayout();
-	createMaterialDescriptorSetLayout();
-	createMeshDescriptorSetLayout();
-	createUIDescriptorSetLayout();
-	createUIPipeline();
+	createMaterialDescriptorSetLayout(*this);
+	createMeshDescriptorSetLayout(*this);
+	createUIDescriptorSetLayout(*this);
+	createUIPipeline(*this);
 	createCommandPools();
 	createDepthResources();
 	createFramebuffers();
@@ -1634,8 +1258,6 @@ void VulkanContext::initVulkan() {
 	createGlobalDescriptorSets();
 	createCommandBuffer();
 	createSyncObjects();
-
-	// addUIQuad();
 }
 
 void VulkanContext::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
@@ -1843,7 +1465,7 @@ bool VulkanContext::render() {
 
 void VulkanContext::cleanupSwapChain() {
 	vkDestroyImageView(device, depthImageView, nullptr);
-	allocator.destroyImage(depthImage, depthImageAllocation);
+	vmaDestroyImage(allocator, depthImage, depthImageAllocation);
 
 	for (VkFramebuffer framebuffer : swapChainFramebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -1866,48 +1488,32 @@ void VulkanContext::cleanup() {
 
 	for (const auto& kv : meshes) {
 		Mesh* mesh = kv.second;
-		allocator.destroyBuffer(mesh->vertexBuffer, mesh->vertexAllocation);
-		allocator.destroyBuffer(mesh->indexBuffer, mesh->indexAllocation);
-
-		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			allocator.destroyBuffer(mesh->uniformBuffers[i], mesh->uniformBufferAllocations[i]);
-		}
-
+		mesh->cleanup(*this);
 		delete mesh;
 	}
 
 	for (const auto& kv : uiQuads) {
 		UIQuad quad = kv.second;
-		allocator.destroyBuffer(quad.vertexBuffer, quad.vertexAllocation);
-		allocator.destroyBuffer(quad.indexBuffer, quad.indexAllocation);
+		vmaDestroyBuffer(allocator, quad.vertexBuffer, quad.vertexAllocation);
+		vmaDestroyBuffer(allocator, quad.indexBuffer, quad.indexAllocation);
 
 		vkDestroySampler(device, quad.texture.sampler, nullptr);
 		vkDestroyImageView(device, quad.texture.imageView, nullptr);
-		allocator.destroyImage(quad.texture.image, quad.texture.allocation);
+		vmaDestroyImage(allocator, quad.texture.image, quad.texture.allocation);
 	}
 
 	descriptorAllocator.cleanup();
 
 	for (const auto& kv : materials) {
 		Material material = kv.second;
-
-		vkDestroyPipeline(device, material.pipeline, nullptr);
-		vkDestroyPipelineLayout(device, material.pipelineLayout, nullptr);
-
-		vkDestroySampler(device, material.texture.sampler, nullptr);
-		vkDestroyImageView(device, material.texture.imageView, nullptr);
-		allocator.destroyImage(material.texture.image, material.texture.allocation);
-
-		vkDestroySampler(device, material.normalTexture.sampler, nullptr);
-		vkDestroyImageView(device, material.normalTexture.imageView, nullptr);
-		allocator.destroyImage(material.normalTexture.image, material.normalTexture.allocation);
+		material.cleanup(*this);
 	}
 
 	vkDestroyPipeline(device, uiPipeline, nullptr);
 	vkDestroyPipelineLayout(device, uiPipelineLayout, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		allocator.destroyBuffer(uniformBuffers[i], uniformBuffersAllocations[i]);
+		vmaDestroyBuffer(allocator, uniformBuffers[i], uniformBuffersAllocations[i]);
 	}
 
 	vkDestroyRenderPass(device, renderPass, nullptr);
@@ -1921,7 +1527,7 @@ void VulkanContext::cleanup() {
 	vkDestroyCommandPool(device, drawCommandPool, nullptr);
 	vkDestroyCommandPool(device, transientCommandPool, nullptr);
 
-	allocator.cleanup();
+	vmaDestroyAllocator(allocator);
 	vkDestroyDevice(device, nullptr);
 
 	if (enableValidationLayers) {

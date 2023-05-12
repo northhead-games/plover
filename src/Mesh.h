@@ -2,14 +2,7 @@
 #include "includes.h"
 #include "Texture.h"
 
-struct Material {
-	VkPipeline pipeline;
-	VkPipelineLayout pipelineLayout;
-
-	Texture texture;
-	Texture normalTexture;
-	std::vector<VkDescriptorSet> descriptorSets;
-};
+struct VulkanContext;
 
 struct Vertex {
 	glm::vec3 pos;
@@ -56,6 +49,16 @@ struct Vertex {
 	}
 };
 
+namespace std {
+	template<> struct hash<Vertex> {
+		size_t operator()(Vertex const& vertex) const {
+			return ((hash<glm::vec3>()(vertex.pos) ^
+				(hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.texCoord) << 1);
+		}
+	};
+}
+
 struct MeshUniform {
 	glm::mat4 model;
 };
@@ -79,27 +82,25 @@ struct Mesh {
 
 	size_t materialId;
 
+	void createUniform(VulkanContext& context);
 	void updateUniformBuffer(uint32_t currentImage);
+
+	void cleanup(VulkanContext& context);
 };
 
-struct UIQuad {
-	VkBuffer vertexBuffer;
-	VmaAllocation vertexAllocation;
+void createVertexBuffer(VulkanContext& context,
+						std::vector<Vertex> vertices,
+						VkBuffer& buffer,
+						VmaAllocation& allocation);
 
-	VkBuffer indexBuffer;
-	VmaAllocation indexAllocation;
+void createIndexBuffer(VulkanContext& context,
+					   std::vector<uint32_t> indices,
+					   VkBuffer& buffer,
+					   VmaAllocation& allocation);
 
-	Texture texture;
+size_t createMesh(VulkanContext& context,
+				  std::vector<Vertex> vertices,
+				  std::vector<uint32_t> indices,
+				  size_t materialId);
 
-	std::vector<VkDescriptorSet> uniformDescriptorSets;
-};
-
-namespace std {
-	template<> struct hash<Vertex> {
-		size_t operator()(Vertex const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^
-				(hash<glm::vec3>()(vertex.normal) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-}
+void createMeshDescriptorSetLayout(VulkanContext& context);

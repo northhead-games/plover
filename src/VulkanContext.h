@@ -2,14 +2,18 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnullability-completeness"
-#include "VulkanAllocator.h"
+#include <vma/vk_mem_alloc.h>
 #pragma clang diagnostic pop
+
+#include "includes.h"
 
 #include "DescriptorAllocator.h"
 #include "Mesh.h"
+#include "Material.h"
 #include "Texture.h"
+#include "UI.h"
 #include "ttfRenderer.h"
-#include "includes.h"
+
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t WIDTH = 1280;
@@ -57,6 +61,23 @@ struct PipelineCreateInfo {
 	VkDescriptorSetLayout *pDescriptorSetLayouts;
 };
 
+struct CreateBufferInfo {
+	VkDeviceSize size;
+	VkBufferUsageFlags usage;
+	VkMemoryPropertyFlags properties;
+	VmaAllocationCreateFlagBits vmaFlags;
+};
+
+struct CreateImageInfo {
+	uint32_t width;
+	uint32_t height;
+	VkFormat format;
+	VkImageTiling tiling;
+	VkImageUsageFlags usage;
+	VkMemoryPropertyFlags properties;
+	VmaAllocationCreateFlagBits vmaFlags;
+};
+
 struct VulkanContext {
 	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_KHRONOS_validation"
@@ -81,7 +102,8 @@ struct VulkanContext {
 
 	VkDevice device;
 
-	VulkanAllocator allocator;
+	VmaAllocator allocator;
+	VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
 	DescriptorAllocator descriptorAllocator;
 
 	VkQueue graphicsQueue;
@@ -168,93 +190,61 @@ struct VulkanContext {
 	bool checkValidationLayerSupport();
 
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice currentDevice);
-
 	bool checkDeviceExtensionSupport(VkPhysicalDevice currentDevice);
-
 	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
-
 	uint32_t rateDeviceSuitability(VkPhysicalDevice currentDevice);
-
 	void pickPhysicalDevice();
 
 	void createLogicalDevice();
 
 	void initAllocator();
+	void createBuffer(CreateBufferInfo createInfo, VkBuffer& buffer, VmaAllocation& bufferAllocation);
+	void createImage(CreateImageInfo createImage, VkImage& image, VmaAllocation& imageAllocation);
 
 	void createSurface();
 
-	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-
-	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	void createSwapChain();
 
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
-
 	void createImageViews();
 
 	void createRenderPass();
 
 	void createGlobalDescriptorSetLayout();
-	void createMaterialDescriptorSetLayout();
-	void createMeshDescriptorSetLayout();
-	void createUIDescriptorSetLayout();
 
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
-	void createGraphicsPipeline(PipelineCreateInfo info, VkPipeline& pipeline, VkPipelineLayout& pipelineLayout);
-
-	void createUIPipeline();
-
-	size_t createMaterial(const char *texturePath, const char *normalPath);
+	void createGraphicsPipeline(PipelineCreateInfo info,
+								VkPipeline& pipeline,
+								VkPipelineLayout& pipelineLayout);
 
 	void createFramebuffers();
 
-	void createCommandPool(VkCommandPoolCreateFlagBits, VkCommandPool& commandPool);
-
+	void createCommandPool(VkCommandPoolCreateFlagBits flags, VkCommandPool& commandPool);
 	void createCommandPools();
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
-	void createTexture(TextureCreateInfo info, Texture& texture);
-
-	void createTextureImage(Texture& texture, const char *path, BitmapFormat format);
-
-	void createTextureSampler(Texture& texture);
-
 	VkFormat findSupportedFormats(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
 	VkFormat findDepthFormat();
-
 	void createDepthResources();
 
 	VkCommandBuffer beginSingleTimeCommands();
-
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 	void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-
-	void createVertexBuffer(std::vector<Vertex> vertices, VkBuffer& buffer, VmaAllocation& allocation);
-
-	void createIndexBuffer(std::vector<uint32_t> indices, VkBuffer& buffer, VmaAllocation& allocation);
 
 	void createUniformBuffers();
 
 	void createDescriptorAllocator();
 
 	void createGlobalDescriptorSets();
-
-	void createMaterialDescriptorSets(Material& material);
-	void createMeshUniform(Mesh& mesh);
-	void createUIUniform(UIQuad& quad);
-
-	size_t addMesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices, size_t materialId);
-
-	size_t addUIQuad();
 
 	void createCommandBuffer();
 
