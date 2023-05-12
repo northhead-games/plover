@@ -57,7 +57,7 @@ internal_func win32_GameCode win32_loadGameCode() {
 internal_func Handles win32_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = DEBUG_log;
-	handles.isKeyDown = isKeyDown;
+	handles.getInputMessage = getInputMessage;
 	handles.pushRenderCommand = pushRenderCommand;
 	handles.hasRenderMessage = hasRenderMessage;
 	handles.popRenderMessage = popRenderMessage;
@@ -94,7 +94,6 @@ int CALLBACK WinMain(
 
 	renderer.init();
 	while (renderer.render()) {
-		memory.mousePosition = mousePosition;
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
 	}
