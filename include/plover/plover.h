@@ -52,6 +52,9 @@ typedef glm::mat4 Mat4;
 struct Handles {
 	void (*DEBUG_log)(const char *, ...);
 
+	// Timing
+	double (*getTime)();
+
 	// Input
 	InputMessage (*getInputMessage)();
 

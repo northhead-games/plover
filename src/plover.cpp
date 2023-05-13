@@ -10,6 +10,10 @@ global_var bool isMouseReset = false;
 
 // Input
 
+double getTime() {
+	return glfwGetTime();
+}
+
 void mouseCallback(
 	GLFWwindow* window,
 	double position_x,
