@@ -46,6 +46,7 @@ struct linux_GameCode {
 	long modificationTime;
 	void *sharedObject;
 	f_gameUpdateAndRender* updateAndRender;
+
 };
 
 internal_func int linux_guarStub(Handles *_h, GameMemory *_gm) {
@@ -58,7 +59,7 @@ internal_func linux_GameCode linux_loadGameCode(linux_GameCode oldCode) {
 
 	struct stat dlStat = {};
 	res = stat(LINUX_GAME_SO, &dlStat);
-	assert(res && "Failed to get shared library attributes!");
+	assert((!res) && "Failed to get shared library attributes!");
 
 	if (dlStat.st_mtim.tv_nsec != oldCode.modificationTime) {
 		linux_GameCode newCode = {};
