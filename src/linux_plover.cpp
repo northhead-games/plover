@@ -123,6 +123,7 @@ int main() {
 	renderer.init();
 	while (renderer.render()) {
 		//memory.mousePosition = mousePosition;
+		game = linux_loadGameCode(game);
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
 	}
