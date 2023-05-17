@@ -87,7 +87,8 @@ internal_func linux_GameCode linux_loadGameCode(linux_GameCode oldCode) {
 internal_func Handles linux_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = DEBUG_log;
-	//handles.isKeyDown = isKeyDown;
+	handles.getTime = getTime;
+	handles.getInputMessage = getInputMessage;
 	handles.pushRenderCommand = pushRenderCommand;
 	handles.hasRenderMessage = hasRenderMessage;
 	handles.popRenderMessage = popRenderMessage;
