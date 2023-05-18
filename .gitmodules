@@ -4,3 +4,6 @@
 [submodule "libraries/glm"]
 	path = libraries/glm
 	url = git@github.com:g-truc/glm.git
+[submodule "lapwing"]
+	path = lapwing
+	url = git@github.com:northhead-games/lapwing.git

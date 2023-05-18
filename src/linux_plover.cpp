@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <sys/stat.h>
+
+#define LINUX_GAME_SO "../libProjectG.so"
+#define GAME_UPDATE_RENDER_FUNC "gameUpdateAndRender"
 
 // OS-Independent Wrappers
 // TODO(oliver): Handle errors instead of just asserting
@@ -39,7 +43,10 @@ void DEBUG_log(const char *f, ...) {
 
 // Shared Library Loading
 struct linux_GameCode {
+	long modificationTime;
+	void *sharedObject;
 	f_gameUpdateAndRender* updateAndRender;
+
 };
 
 internal_func int linux_guarStub(Handles *_h, GameMemory *_gm) {
@@ -47,23 +54,41 @@ internal_func int linux_guarStub(Handles *_h, GameMemory *_gm) {
 	return 0;
 }
 
-internal_func linux_GameCode linux_loadGameCode() {
-	linux_GameCode result = {};
-	result.updateAndRender = linux_guarStub;
-	void *gameCodeSO = dlopen("../libProjectG.so", RTLD_LAZY);
-	if (gameCodeSO) {
-		result.updateAndRender = (f_gameUpdateAndRender*) dlsym(gameCodeSO, "gameUpdateAndRender");
-		if (!result.updateAndRender) result.updateAndRender = linux_guarStub;
-	}
+internal_func linux_GameCode linux_loadGameCode(linux_GameCode oldCode) {
+	int res;
 
-	return result;
+	struct stat dlStat = {};
+	res = stat(LINUX_GAME_SO, &dlStat);
+	assert((!res) && "Failed to get shared library attributes!");
+
+	if (dlStat.st_mtim.tv_nsec != oldCode.modificationTime) {
+		linux_GameCode newCode = {};
+		newCode.modificationTime = dlStat.st_mtim.tv_nsec;
+		newCode.updateAndRender = linux_guarStub;
+
+		if (oldCode.sharedObject) {
+			res = dlclose(oldCode.sharedObject);
+			assert((!res) && "Failed to unload shared object!");
+		}
+		newCode.sharedObject = dlopen(LINUX_GAME_SO, RTLD_LAZY);
+		if (newCode.sharedObject) {
+			newCode.updateAndRender = (f_gameUpdateAndRender *) dlsym(newCode.sharedObject, GAME_UPDATE_RENDER_FUNC);
+
+			if (!newCode.updateAndRender) {
+				newCode.updateAndRender = linux_guarStub;
+			}
+		}
+		return newCode;
+	}
+	return oldCode;
 }
 
 // Handles
 internal_func Handles linux_createHandles() {
 	Handles handles{};
 	handles.DEBUG_log = DEBUG_log;
-	handles.isKeyDown = isKeyDown;
+	handles.getTime = getTime;
+	handles.getInputMessage = getInputMessage;
 	handles.pushRenderCommand = pushRenderCommand;
 	handles.hasRenderMessage = hasRenderMessage;
 	handles.popRenderMessage = popRenderMessage;
@@ -85,7 +110,8 @@ internal_func void linux_destroyMemory(GameMemory memory) {
 }
 
 int main() {
-	linux_GameCode game = linux_loadGameCode();
+	linux_GameCode game {};
+	game = linux_loadGameCode(game);
 	Handles handles = linux_createHandles();
 	GameMemory memory = linux_createMemory();
 
@@ -96,7 +122,7 @@ int main() {
 
 	renderer.init();
 	while (renderer.render()) {
-		memory.mousePosition = mousePosition;
+		game = linux_loadGameCode(game);
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
 	}
