@@ -68,7 +68,7 @@ internal_func linux_GameCode linux_loadGameCode(linux_GameCode oldCode) {
 
 		if (oldCode.sharedObject) {
 			res = dlclose(oldCode.sharedObject);
-			assert(res && "Failed to unload shared object!");
+			assert((!res) && "Failed to unload shared object!");
 		}
 		newCode.sharedObject = dlopen(LINUX_GAME_SO, RTLD_LAZY);
 		if (newCode.sharedObject) {
@@ -122,7 +122,6 @@ int main() {
 
 	renderer.init();
 	while (renderer.render()) {
-		//memory.mousePosition = mousePosition;
 		game = linux_loadGameCode(game);
 		game.updateAndRender(&handles, &memory);
 		renderer.processCommands();
