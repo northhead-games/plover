@@ -1,6 +1,7 @@
 #pragma once
 
 #include "includes.h"
+#include "AssetLoader.h"
 
 struct VulkanContext;
 
@@ -59,4 +60,4 @@ struct Texture {
 };
 
 void createTexture(VulkanContext& context, TextureCreateInfo info, Texture& texture);
-void createImageTexture(VulkanContext& context, Texture &texture, const char *path, BitmapFormat format);
+void createImageTexture(VulkanContext& context, AssetLoader loader, Texture &texture, const char *name, BitmapFormat format);

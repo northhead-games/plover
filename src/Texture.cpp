@@ -1,8 +1,6 @@
 #include "Texture.h"
 #include "VulkanContext.h"
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include "lapwing.h"
 
 void Bitmap::writeGrayscale(u8 value, u32 x, u32 y) {
 	assert(x >= 0 && y >= 0);
@@ -114,20 +112,14 @@ void createTexture(VulkanContext& context, TextureCreateInfo info, Texture& text
 	createTextureSampler(context, texture);
 }
 
-void createImageTexture(VulkanContext& context, Texture& texture, const char *path, BitmapFormat format) {
-	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
-	}
+void createImageTexture(VulkanContext& context, AssetLoader loader, Texture& texture, const char *name, BitmapFormat format) {
+	ImageInfo info{};
 
 	TextureCreateInfo createInfo{};
-	createInfo.bitmap.pixels = pixels;
-	createInfo.bitmap.width = texWidth;
-	createInfo.bitmap.height = texHeight;
+	createInfo.bitmap.pixels = loader.loadTexture(name, &info);
+	createInfo.bitmap.width = info.width;
+	createInfo.bitmap.height = info.height;
 	createInfo.bitmap.format = format;
 
 	createTexture(context, createInfo, texture);
-	stbi_image_free(pixels);
 }
