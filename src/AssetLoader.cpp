@@ -1,5 +1,6 @@
 #include "AssetLoader.h"
 #include <iostream>
+#include <cmath>
 
 AssetLoader::AssetLoader() {
 	assets = new std::ifstream("../resources/assets/assets.plv", std::ifstream::in | std::ifstream::binary);
