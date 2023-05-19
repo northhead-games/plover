@@ -75,6 +75,7 @@ void createMaterialDescriptorSetLayout(VulkanContext& context) {
 }
 
 size_t createMaterial(VulkanContext& context,
+					  AssetLoader loader,
 					  const char *texturePath,
 					  const char *normalPath) {
 	local_persist size_t nextId = 1;
@@ -97,8 +98,8 @@ size_t createMaterial(VulkanContext& context,
 
 	context.createGraphicsPipeline(createInfo, material.pipeline, material.pipelineLayout);
 
-	createImageTexture(context, material.texture, texturePath, SRGBA8);
-	createImageTexture(context, material.normalTexture, normalPath, RGBA8);
+	createImageTexture(context, loader, material.texture, texturePath, SRGBA8);
+	createImageTexture(context, loader, material.normalTexture, normalPath, RGBA8);
 	material.createDescriptorSets(context);
 
 	size_t id = nextId;

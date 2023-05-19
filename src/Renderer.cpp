@@ -121,11 +121,11 @@ void Renderer::processCommand(RenderCommand inCmd) {
 		}
 		case CREATE_MATERIAL: {
 			CreateMaterialData materialData = inCmd.v.createMaterial;
-			const char *texturePath = materialData.texturePath;
-			const char *normalPath = materialData.normalPath;
+			const char *textureName = materialData.textureName;
+			const char *normalName = materialData.normalName;
 
 			RenderMessage message{MATERIAL_CREATED, cmdID};
-			message.v.materialCreated.materialID = createMaterial(*context, texturePath, normalPath);
+			message.v.materialCreated.materialID = createMaterial(*context, loader, textureName, normalName);
 			messageQueue.push(message);
 			break;
 		}

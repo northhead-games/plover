@@ -2,6 +2,7 @@
 
 #include "includes.h"
 #include "Texture.h"
+#include "AssetLoader.h"
 
 struct VulkanContext;
 
@@ -17,5 +18,5 @@ struct Material {
 	void cleanup(VulkanContext& context);
 };
 
-size_t createMaterial(VulkanContext& context, const char *texturePath, const char *normalPath);
+size_t createMaterial(VulkanContext& context, AssetLoader loader, const char *texturePath, const char *normalPath);
 void createMaterialDescriptorSetLayout(VulkanContext& context);
