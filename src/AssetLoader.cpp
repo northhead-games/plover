@@ -22,7 +22,10 @@ char* AssetLoader::loadTexture(std::string name, ImageInfo* info) {
 		Entry entry = entryPair->second;
 		assets->seekg(entry.offset, std::ios_base::beg);
 		assets->read((char*)info, sizeof(ImageInfo));
+
+		// TODO (yigit): Change this to use an arena once they are implemented.
 		char* texture = new char[entry.size - sizeof(ImageInfo)];
+
 		assets->read(texture, entry.size - sizeof(ImageInfo));
 		return texture;
 	} else {
@@ -49,5 +52,5 @@ u64 AssetLoader::hashAsset(std::string name) {
 }
 
 AssetLoader::~AssetLoader() {
-
+	assets->close();
 }
