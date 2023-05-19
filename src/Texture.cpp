@@ -1,6 +1,7 @@
 #include "Texture.h"
 #include "VulkanContext.h"
 
+#define STB_IMAGE_FAILURE "Failure to load texture image: "
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
@@ -119,7 +120,8 @@ void createImageTexture(VulkanContext& context, Texture& texture, const char *pa
 	stbi_uc* pixels = stbi_load(path, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
 	if (!pixels) {
-		throw std::runtime_error("failed to load texture image!");
+		const char *stb_err = stbi_failure_reason();
+		throw std::runtime_error(STB_IMAGE_FAILURE + std::string(stbi_failure_reason()));
 	}
 
 	TextureCreateInfo createInfo{};
