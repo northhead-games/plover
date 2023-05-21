@@ -19,9 +19,11 @@ char* AssetLoader::loadTexture(std::string name, ImageInfo* info) {
 	u64 assetHash = hashAsset(name);
 	auto entryPair = tableOfContents.find(assetHash);
 
+	assets->seekg(0, std::ios_base::beg);
+
 	if (entryPair != tableOfContents.end()) {
 		Entry entry = entryPair->second;
-		assets->seekg(entry.offset, std::ios_base::beg);
+		assets->seekg(entry.offset);
 		assets->read((char*)info, sizeof(ImageInfo));
 
 		// TODO (yigit): Change this to use an arena once they are implemented.
