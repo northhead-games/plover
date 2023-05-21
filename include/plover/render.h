@@ -16,8 +16,8 @@ struct CreateMeshData {
 };
 
 struct CreateMaterialData {
-	const char *texturePath;
-	const char *normalPath;
+	const char *textureName;
+	const char *normalName;
 };
 
 struct SetMeshTransformData {
